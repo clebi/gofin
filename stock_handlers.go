@@ -24,9 +24,34 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type errorDesc struct {
+	Status      string `json:"status"`
+	Description string `json:"description"`
+}
+
 // StockHandlers is an object containing all the handlers concerning stocks
 type StockHandlers struct {
 	*Context
+}
+
+func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.Request) {
+	if err := recover(); err != nil {
+		switch err := err.(type) {
+		case *finance.YApiErrorContent:
+			resp.WriteHeader(http.StatusBadRequest)
+		default:
+			log.Error(err)
+			resp.WriteHeader(http.StatusInternalServerError)
+			bresp, err := json.Marshal(errorDesc{
+				Status:      "error",
+				Description: "unknown_error",
+			})
+			if err != nil {
+				return
+			}
+			resp.Write(bresp)
+		}
+	}
 }
 
 // History retrieve stocks history
@@ -35,29 +60,25 @@ type StockHandlers struct {
 //
 //  This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request) {
+	defer handlers.handleErrors(resp, req)
 	vars := mux.Vars(req)
 	end := time.Now().AddDate(0, 0, -1)
 	start := end.AddDate(0, 0, -30)
 	history := finance.NewHistory()
 	stocks, err := history.GetHistory(vars["symbol"], start, end)
 	if err != nil {
-		resp.WriteHeader(http.StatusBadRequest)
-		return
+		panic(err)
 	}
 	stockEs := NewEsStock(handlers.es)
 	for _, stock := range stocks {
 		err = stockEs.Index(stock)
 		if err != nil {
-			log.Error(err)
-			resp.WriteHeader(http.StatusInternalServerError)
-			return
+			panic(err)
 		}
 	}
 	bresp, err := json.Marshal(stocks)
 	if err != nil {
-		log.Error(err)
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write(bresp)

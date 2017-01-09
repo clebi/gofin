@@ -22,11 +22,24 @@ import (
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
+const (
+	indexName    = "stocks-hist"
+	indexType    = "stock_day"
+	indexTimeout = 3 * time.Second
+)
+
+//IEsStock contains elasticsearch manager actions
+type IEsStock interface {
+	Index(stock finance.Stock) error
+}
+
+// EsStock manage stocks in elasticsearch
 type EsStock struct {
 	es *elastic.Client
 }
 
-func NewEsStock(es *elastic.Client) *EsStock {
+// NewEsStock create a new elasticsearch manager object
+func NewEsStock(es *elastic.Client) IEsStock {
 	return &EsStock{
 		es: es,
 	}
@@ -34,6 +47,8 @@ func NewEsStock(es *elastic.Client) *EsStock {
 
 // Index is used to index a stock into elasticsearch
 func (esStock *EsStock) Index(stock finance.Stock) error {
+	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
+	defer esCancel()
 	stockMap := map[string]interface{}{
 		"date":   stock.Date.Format(time.RFC3339),
 		"open":   stock.Open,
@@ -44,11 +59,11 @@ func (esStock *EsStock) Index(stock finance.Stock) error {
 		"symbol": stock.Symbol,
 	}
 	_, err := esStock.es.Index().
-		Index("stocks-hist").
-		Type("stock_day").
+		Index(indexName).
+		Type(indexType).
 		Id(stock.Symbol + "_" + stock.Date.Format(finance.DateFormat)).
 		BodyJson(stockMap).
-		Do(context.Background())
+		Do(esContext)
 	if err != nil {
 		return err
 	}
