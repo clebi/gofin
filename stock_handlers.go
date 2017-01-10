@@ -36,21 +36,24 @@ type StockHandlers struct {
 
 func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.Request) {
 	if err := recover(); err != nil {
+		var errorMsg string
 		switch err := err.(type) {
-		case *finance.YApiErrorContent:
+		case finance.YApiError:
+			errorMsg = err.Error()
 			resp.WriteHeader(http.StatusBadRequest)
 		default:
 			log.Error(err)
+			errorMsg = "unknown_error"
 			resp.WriteHeader(http.StatusInternalServerError)
-			bresp, err := json.Marshal(errorDesc{
-				Status:      "error",
-				Description: "unknown_error",
-			})
-			if err != nil {
-				return
-			}
-			resp.Write(bresp)
 		}
+		bresp, err := json.Marshal(errorDesc{
+			Status:      "error",
+			Description: errorMsg,
+		})
+		if err != nil {
+			return
+		}
+		resp.Write(bresp)
 	}
 }
 

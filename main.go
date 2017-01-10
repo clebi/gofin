@@ -37,7 +37,7 @@ type Context struct {
 func main() {
 	// Initialize logger
 	log.SetOutput(os.Stdout)
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	// Initialize elasticsearch client
 	es, err := elastic.NewClient()
