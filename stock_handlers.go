@@ -33,6 +33,7 @@ type errorDesc struct {
 	Description string `json:"description"`
 }
 
+// HistoryParams contains all the parameters for the history route
 type HistoryParams struct {
 	Days int `schema:"days" validate:"gt=0"`
 }
@@ -77,7 +78,7 @@ func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.
 //
 //  handlers.History(w, r)
 //
-//  This function is a handler for http server, it should not be called directly
+// This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request) {
 	defer handlers.handleErrors(resp, req)
 	vars := mux.Vars(req)

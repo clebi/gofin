@@ -28,7 +28,7 @@ const (
 	indexTimeout = 3 * time.Second
 )
 
-//IEsStock contains elasticsearch manager actions
+// IEsStock contains elasticsearch manager actions
 type IEsStock interface {
 	Index(stock finance.Stock) error
 }
