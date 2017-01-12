@@ -15,18 +15,26 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/clebi/yfinance"
+	"github.com/go-playground/validator"
+	schema "github.com/gorilla/Schema"
 	"github.com/gorilla/mux"
 )
 
 type errorDesc struct {
 	Status      string `json:"status"`
 	Description string `json:"description"`
+}
+
+type HistoryParams struct {
+	Days int `schema:"days" validate:"gt=0"`
 }
 
 // StockHandlers is an object containing all the handlers concerning stocks
@@ -41,6 +49,14 @@ func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.
 		case finance.YApiError:
 			errorMsg = err.Error()
 			resp.WriteHeader(http.StatusBadRequest)
+		case validator.ValidationErrors:
+			errBuff := bytes.NewBufferString("following parameters are invalid: ")
+			for _, err := range err {
+				errBuff.WriteString(strings.ToLower(err.Field()))
+				errBuff.WriteByte(',')
+			}
+			errBuff.Truncate(errBuff.Len() - 1)
+			errorMsg = errBuff.String()
 		default:
 			log.Error(err)
 			errorMsg = "unknown_error"
@@ -65,8 +81,15 @@ func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.
 func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request) {
 	defer handlers.handleErrors(resp, req)
 	vars := mux.Vars(req)
+	var params HistoryParams
+	if err := schema.NewDecoder().Decode(&params, req.URL.Query()); err != nil {
+		panic(err)
+	}
+	if err := validator.New().Struct(params); err != nil {
+		panic(err)
+	}
 	end := time.Now().AddDate(0, 0, -1)
-	start := end.AddDate(0, 0, -30)
+	start := end.AddDate(0, 0, params.Days*-1)
 	history := finance.NewHistory()
 	stocks, err := history.GetHistory(vars["symbol"], start, end)
 	if err != nil {
