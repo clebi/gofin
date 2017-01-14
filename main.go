@@ -19,8 +19,10 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/rs/cors"
 	elastic "gopkg.in/olivere/elastic.v5"
 
+	schema "github.com/gorilla/Schema"
 	"github.com/gorilla/mux"
 )
 
@@ -32,6 +34,7 @@ const (
 // It contains resources that needs to be access in http handlers
 type Context struct {
 	es *elastic.Client
+	sh *schema.Decoder
 }
 
 func main() {
@@ -45,9 +48,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	sh := schema.NewDecoder()
+	sh.IgnoreUnknownKeys(true)
 	// Initialize app context
 	context := Context{
 		es: es,
+		sh: sh,
 	}
 
 	stockHandlers := StockHandlers{
@@ -55,6 +61,7 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.HandleFunc("/graph/{symbol}", stockHandlers.History)
+	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
-	log.Fatal(http.ListenAndServe(defaultServerURL, router))
+	log.Fatal(http.ListenAndServe(defaultServerURL, handler))
 }

@@ -16,6 +16,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"time"
 
 	finance "github.com/clebi/yfinance"
@@ -28,9 +30,18 @@ const (
 	indexTimeout = 3 * time.Second
 )
 
+// EsStocksAgg is the a stock aggregation
+type EsStocksAgg struct {
+	Symbol   string  `json:"symbol"`
+	MsTime   int64   `json:"mstime"`
+	AvgClose float64 `json:"close"`
+	MovClose float64 `json:"mv_close"`
+}
+
 // IEsStock contains elasticsearch manager actions
 type IEsStock interface {
 	Index(stock finance.Stock) error
+	GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error)
 }
 
 // EsStock manage stocks in elasticsearch
@@ -68,4 +79,57 @@ func (esStock *EsStock) Index(stock finance.Stock) error {
 		return err
 	}
 	return nil
+}
+
+// GetStocksAgg retrieves aggregations of stock values by dates
+//
+//  GetStocksAgg("TEST", startDate, endDate)
+//
+// returns an array ofg stocks aggregations
+func (esStock *EsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error) {
+	movStartDate := startDate.AddDate(0, 0, movAvgWindow*-1)
+	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
+	defer esCancel()
+	query := elastic.NewQueryStringQuery(fmt.Sprintf("symbol = %s AND date: [%s TO %s]",
+		symbol, movStartDate.Format(finance.DateFormat), endDate.Format(finance.DateFormat)))
+	avgCloseAgg := elastic.NewAvgAggregation().Field("close")
+	movCloseAgg := elastic.NewMovAvgAggregation().BucketsPath("avg_close").
+		Model(elastic.NewLinearMovAvgModel()).
+		Window(int(math.Ceil(float64(movAvgWindow) / float64(step))))
+	minDateAgg := elastic.NewMinAggregation().Field("date")
+	selectAgg := elastic.NewBucketSelectorAggregation().
+		AddBucketsPath("avg_close", "avg_close").
+		AddBucketsPath("date", "min_date").
+		Script(elastic.NewScript(fmt.Sprintf("params.avg_close > 0 && params.date >= %dL", startDate.Unix()*1000)))
+	timeAgg := elastic.NewDateHistogramAggregation().Field("date").Interval(fmt.Sprintf("%dd", step)).
+		SubAggregation("avg_close", avgCloseAgg).
+		SubAggregation("mov_close", movCloseAgg).
+		SubAggregation("min_date", minDateAgg).
+		SubAggregation("selector", selectAgg)
+	results, err := esStock.es.Search(indexName).
+		Type(indexType).
+		Query(query).
+		Aggregation("time_agg", timeAgg).
+		Size(0).
+		Do(esContext)
+	if err != nil {
+		return nil, err
+	}
+	resAgg, _ := results.Aggregations.DateHistogram("time_agg")
+	stocks := make([]EsStocksAgg, len(resAgg.Buckets))
+	for i, bucket := range resAgg.Buckets {
+		avg, _ := bucket.Avg("avg_close")
+		mov, movOk := bucket.MovAvg("mov_close")
+		stocks[i] = EsStocksAgg{
+			Symbol:   symbol,
+			MsTime:   int64(bucket.Key),
+			AvgClose: *avg.Value,
+		}
+		if movOk {
+			stocks[i].MovClose = *mov.Value
+		} else {
+			stocks[i].MovClose = *avg.Value
+		}
+	}
+	return stocks, nil
 }

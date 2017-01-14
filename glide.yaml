@@ -11,3 +11,5 @@ import:
 - package: github.com/gorilla/Schema
 - package: github.com/go-playground/validator
   version: ~9.3.2
+- package: github.com/rs/cors
+  version: ~1.0.0

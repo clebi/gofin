@@ -24,7 +24,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/clebi/yfinance"
 	"github.com/go-playground/validator"
-	schema "github.com/gorilla/Schema"
 	"github.com/gorilla/mux"
 )
 
@@ -35,7 +34,9 @@ type errorDesc struct {
 
 // HistoryParams contains all the parameters for the history route
 type HistoryParams struct {
-	Days int `schema:"days" validate:"gt=0"`
+	Days   int `schema:"days" validate:"gt=0"`
+	Window int `schema:"window" validate:"gt=0"`
+	Step   int `schema:"step" validate:"gt=0"`
 }
 
 // StockHandlers is an object containing all the handlers concerning stocks
@@ -83,16 +84,17 @@ func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Reque
 	defer handlers.handleErrors(resp, req)
 	vars := mux.Vars(req)
 	var params HistoryParams
-	if err := schema.NewDecoder().Decode(&params, req.URL.Query()); err != nil {
+	if err := handlers.sh.Decode(&params, req.URL.Query()); err != nil {
 		panic(err)
 	}
 	if err := validator.New().Struct(params); err != nil {
 		panic(err)
 	}
 	end := time.Now().AddDate(0, 0, -1)
+	end = end.Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, params.Days*-1)
 	history := finance.NewHistory()
-	stocks, err := history.GetHistory(vars["symbol"], start, end)
+	stocks, err := history.GetHistory(vars["symbol"], start.AddDate(0, 0, params.Window*-1), end)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +105,11 @@ func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Reque
 			panic(err)
 		}
 	}
-	bresp, err := json.Marshal(stocks)
+	stocksAgg, err := stockEs.GetStocksAgg(vars["symbol"], params.Window, params.Step, start, end)
+	if err != nil {
+		panic(err)
+	}
+	bresp, err := json.Marshal(stocksAgg)
 	if err != nil {
 		panic(err)
 	}
