@@ -19,11 +19,12 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/clebi/yfinance"
+	"github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
 	elastic "gopkg.in/olivere/elastic.v5"
 
 	schema "github.com/gorilla/Schema"
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -33,8 +34,10 @@ const (
 // Context is the context of the application
 // It contains resources that needs to be access in http handlers
 type Context struct {
-	es *elastic.Client
-	sh *schema.Decoder
+	es         *elastic.Client
+	sh         *schema.Decoder
+	historyAPI finance.HistoryAPI
+	esStock    IEsStock
 }
 
 func main() {
@@ -52,15 +55,15 @@ func main() {
 	sh.IgnoreUnknownKeys(true)
 	// Initialize app context
 	context := Context{
-		es: es,
-		sh: sh,
+		es:         es,
+		sh:         sh,
+		historyAPI: finance.NewHistory(),
+		esStock:    NewEsStock(es),
 	}
 
-	stockHandlers := StockHandlers{
-		Context: &context,
-	}
-	router := mux.NewRouter()
-	router.HandleFunc("/graph/{symbol}", stockHandlers.History)
+	stockHandlers := NewStockHandlers(&context)
+	router := httprouter.New()
+	router.GET("/graph/:symbol", stockHandlers.History)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
 	log.Fatal(http.ListenAndServe(defaultServerURL, handler))

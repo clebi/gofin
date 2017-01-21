@@ -24,7 +24,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/clebi/yfinance"
 	"github.com/go-playground/validator"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
 type errorDesc struct {
@@ -39,12 +39,32 @@ type HistoryParams struct {
 	Step   int `schema:"step" validate:"gt=0"`
 }
 
+// GetDateFunc is responsible for get end date
+type GetDateFunc func() time.Time
+
+func getYesterDayDate() time.Time {
+	return time.Now().AddDate(0, 0, -1)
+}
+
+type errorHandlerFunc func(resp http.ResponseWriter, req *http.Request)
+
 // StockHandlers is an object containing all the handlers concerning stocks
 type StockHandlers struct {
 	*Context
+	getDate      GetDateFunc
+	errorHandler errorHandlerFunc
 }
 
-func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.Request) {
+// NewStockHandlers creates a new stock handlers object
+func NewStockHandlers(context *Context) *StockHandlers {
+	return &StockHandlers{
+		Context:      context,
+		getDate:      getYesterDayDate,
+		errorHandler: handleErrors,
+	}
+}
+
+func handleErrors(resp http.ResponseWriter, req *http.Request) {
 	if err := recover(); err != nil {
 		var errorMsg string
 		switch err := err.(type) {
@@ -80,9 +100,8 @@ func (handlers *StockHandlers) handleErrors(resp http.ResponseWriter, req *http.
 //  handlers.History(w, r)
 //
 // This function is a handler for http server, it should not be called directly
-func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request) {
-	defer handlers.handleErrors(resp, req)
-	vars := mux.Vars(req)
+func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request, vars httprouter.Params) {
+	defer handlers.errorHandler(resp, req)
 	var params HistoryParams
 	if err := handlers.sh.Decode(&params, req.URL.Query()); err != nil {
 		panic(err)
@@ -90,22 +109,20 @@ func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Reque
 	if err := validator.New().Struct(params); err != nil {
 		panic(err)
 	}
-	end := time.Now().AddDate(0, 0, -1)
+	end := handlers.getDate()
 	end = end.Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, params.Days*-1)
-	history := finance.NewHistory()
-	stocks, err := history.GetHistory(vars["symbol"], start.AddDate(0, 0, params.Window*-1), end)
+	stocks, err := handlers.Context.historyAPI.GetHistory(vars.ByName("symbol"), start.AddDate(0, 0, params.Window*-1), end)
 	if err != nil {
 		panic(err)
 	}
-	stockEs := NewEsStock(handlers.es)
 	for _, stock := range stocks {
-		err = stockEs.Index(stock)
+		err = handlers.Context.esStock.Index(stock)
 		if err != nil {
 			panic(err)
 		}
 	}
-	stocksAgg, err := stockEs.GetStocksAgg(vars["symbol"], params.Window, params.Step, start, end)
+	stocksAgg, err := handlers.Context.esStock.GetStocksAgg(vars.ByName("symbol"), params.Window, params.Step, start, end)
 	if err != nil {
 		panic(err)
 	}
