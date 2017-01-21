@@ -16,12 +16,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	finance "github.com/clebi/yfinance"
+	"github.com/go-playground/validator"
 	schema "github.com/gorilla/Schema"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +31,12 @@ import (
 )
 
 const (
-	symbolTest = "TEST"
+	symbolTest         = "TEST"
+	unknownErrorResp   = "{\"status\":\"error\",\"description\":\"unknown_error\"}"
+	yapiErrorMsg       = "test_error"
+	yapiErrorLang      = "en-US"
+	yapiErrorResp      = "{\"status\":\"error\",\"description\":\"" + yapiErrorMsg + "\"}"
+	validatorErrorResp = "{\"status\":\"error\",\"description\":\"following parameters are invalid:\"}"
 )
 
 type mockHistoryAPI struct {
@@ -99,4 +106,36 @@ func TestHistory(t *testing.T) {
 	handlers.History(resp, req, params)
 	assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
 	assert.Equal(t, string(stcoskAggJson), resp.Body.String())
+}
+
+func TestHandleErrorsUnknown(t *testing.T) {
+	resp := httptest.NewRecorder()
+	defer func() {
+		assert.Equal(t, http.StatusInternalServerError, resp.Result().StatusCode)
+		assert.Equal(t, unknownErrorResp, resp.Body.String())
+	}()
+	defer handleErrors(resp, nil)
+	panic(errors.New("unknown"))
+}
+
+func TestHandleErrorsYApiError(t *testing.T) {
+	resp := httptest.NewRecorder()
+	defer func() {
+		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
+		assert.Equal(t, yapiErrorResp, resp.Body.String())
+	}()
+	defer handleErrors(resp, nil)
+	panic(finance.YApiError{Content: finance.YApiErrorContent{Lang: yapiErrorLang, Description: yapiErrorMsg}})
+}
+
+func TestHandleErrorsValidationError(t *testing.T) {
+	resp := httptest.NewRecorder()
+	defer func() {
+		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
+		assert.Equal(t, validatorErrorResp, resp.Body.String())
+	}()
+	defer handleErrors(resp, nil)
+	// FIXME put validation error objects into fieldErrors
+	fieldErrors := validator.ValidationErrors{}
+	panic(fieldErrors)
 }

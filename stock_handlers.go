@@ -79,6 +79,7 @@ func handleErrors(resp http.ResponseWriter, req *http.Request) {
 			}
 			errBuff.Truncate(errBuff.Len() - 1)
 			errorMsg = errBuff.String()
+			resp.WriteHeader(http.StatusBadRequest)
 		default:
 			log.Error(err)
 			errorMsg = "unknown_error"
