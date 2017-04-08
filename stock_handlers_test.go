@@ -69,10 +69,13 @@ func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int,
 	return stocks, args.Error(1)
 }
 
+var (
+	testEndDate      = getTestDate().Truncate(24 * time.Hour)
+	testStartDate    = testEndDate.AddDate(0, 0, -3)
+	testStartMovDate = testStartDate.AddDate(0, 0, -2)
+)
+
 func TestHistory(t *testing.T) {
-	testEndDate := getTestDate().Truncate(24 * time.Hour)
-	testStartDate := testEndDate.AddDate(0, 0, -3)
-	testStartMovDate := testStartDate.AddDate(0, 0, -2)
 	stock := finance.Stock{Open: 1.1, High: 2.2, Low: 3.3, Close: 4.4, Volume: 999, Symbol: symbolTest, Date: finance.YTime{Time: testStartDate}}
 	stocks := []finance.Stock{stock}
 	mockedHistoryAPI := mockHistoryAPI{}
