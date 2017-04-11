@@ -15,3 +15,7 @@ import:
   version: ~1.1.4
 - package: github.com/julienschmidt/httprouter
   version: ~1.1.0
+- package: github.com/gin-gonic/gin
+  version: ~1.1.4
+- package: github.com/labstack/echo
+  version: ~3.0.3

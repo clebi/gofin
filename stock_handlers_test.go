@@ -25,7 +25,7 @@ import (
 	finance "github.com/clebi/yfinance"
 	"github.com/go-playground/validator"
 	schema "github.com/gorilla/Schema"
-	"github.com/julienschmidt/httprouter"
+	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -81,7 +81,7 @@ func TestHistory(t *testing.T) {
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedHistoryAPI.On("GetHistory", symbolTest, testStartMovDate, testEndDate).Return(stocks, nil)
 	stocksAgg := []EsStocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
-	stcoskAggJson, err := json.Marshal(stocksAgg)
+	stockAggJSON, err := json.Marshal(stocksAgg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	errorHandlerNone := func(resp http.ResponseWriter, req *http.Request) {
+	errorHandlerNone := func(c echo.Context) {
 		assert.Nil(t, recover())
 	}
 	handlers := StockHandlers{
@@ -105,10 +105,13 @@ func TestHistory(t *testing.T) {
 		getDate:      getTestDate,
 		errorHandler: errorHandlerNone,
 	}
-	params := httprouter.Params{httprouter.Param{Key: "symbol", Value: symbolTest}}
-	handlers.History(resp, req, params)
+	e := echo.New()
+	c := e.NewContext(req, resp)
+	c.SetParamNames("symbol")
+	c.SetParamValues(symbolTest)
+	handlers.History(c)
 	assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
-	assert.Equal(t, string(stcoskAggJson), resp.Body.String())
+	assert.Equal(t, string(stockAggJSON), resp.Body.String())
 }
 
 func TestHandleErrorsUnknown(t *testing.T) {
@@ -117,7 +120,9 @@ func TestHandleErrorsUnknown(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, resp.Result().StatusCode)
 		assert.Equal(t, unknownErrorResp, resp.Body.String())
 	}()
-	defer handleErrors(resp, nil)
+	e := echo.New()
+	c := e.NewContext(nil, resp)
+	defer handleErrors(c)
 	panic(errors.New("unknown"))
 }
 
@@ -127,7 +132,9 @@ func TestHandleErrorsYApiError(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
 		assert.Equal(t, yapiErrorResp, resp.Body.String())
 	}()
-	defer handleErrors(resp, nil)
+	e := echo.New()
+	c := e.NewContext(nil, resp)
+	defer handleErrors(c)
 	panic(finance.YApiError{Content: finance.YApiErrorContent{Lang: yapiErrorLang, Description: yapiErrorMsg}})
 }
 
@@ -137,7 +144,9 @@ func TestHandleErrorsValidationError(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
 		assert.Equal(t, validatorErrorResp, resp.Body.String())
 	}()
-	defer handleErrors(resp, nil)
+	e := echo.New()
+	c := e.NewContext(nil, resp)
+	defer handleErrors(c)
 	// FIXME put validation error objects into fieldErrors
 	fieldErrors := validator.ValidationErrors{}
 	panic(fieldErrors)

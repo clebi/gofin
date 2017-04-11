@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -24,7 +23,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/clebi/yfinance"
 	"github.com/go-playground/validator"
-	"github.com/julienschmidt/httprouter"
+	"github.com/labstack/echo"
 )
 
 type errorDesc struct {
@@ -46,7 +45,7 @@ func getYesterDayDate() time.Time {
 	return time.Now().AddDate(0, 0, -1)
 }
 
-type errorHandlerFunc func(resp http.ResponseWriter, req *http.Request)
+type errorHandlerFunc func(c echo.Context)
 
 // StockHandlers is an object containing all the handlers concerning stocks
 type StockHandlers struct {
@@ -64,13 +63,11 @@ func NewStockHandlers(context *Context) *StockHandlers {
 	}
 }
 
-func handleErrors(resp http.ResponseWriter, req *http.Request) {
+func handleErrors(c echo.Context) {
 	if err := recover(); err != nil {
-		var errorMsg string
 		switch err := err.(type) {
 		case finance.YApiError:
-			errorMsg = err.Error()
-			resp.WriteHeader(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, errorDesc{Status: "error", Description: err.Error()})
 		case validator.ValidationErrors:
 			errBuff := bytes.NewBufferString("following parameters are invalid: ")
 			for _, err := range err {
@@ -78,21 +75,12 @@ func handleErrors(resp http.ResponseWriter, req *http.Request) {
 				errBuff.WriteByte(',')
 			}
 			errBuff.Truncate(errBuff.Len() - 1)
-			errorMsg = errBuff.String()
-			resp.WriteHeader(http.StatusBadRequest)
+			errorMsg := errBuff.String()
+			c.JSON(http.StatusBadRequest, errorDesc{Status: "error", Description: errorMsg})
 		default:
 			log.Error(err)
-			errorMsg = "unknown_error"
-			resp.WriteHeader(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, errorDesc{Status: "error", Description: "unknown_error"})
 		}
-		bresp, err := json.Marshal(errorDesc{
-			Status:      "error",
-			Description: errorMsg,
-		})
-		if err != nil {
-			return
-		}
-		resp.Write(bresp)
 	}
 }
 
@@ -101,10 +89,10 @@ func handleErrors(resp http.ResponseWriter, req *http.Request) {
 //  handlers.History(w, r)
 //
 // This function is a handler for http server, it should not be called directly
-func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Request, vars httprouter.Params) {
-	defer handlers.errorHandler(resp, req)
+func (handlers *StockHandlers) History(c echo.Context) error {
+	defer handlers.errorHandler(c)
 	var params HistoryParams
-	if err := handlers.sh.Decode(&params, req.URL.Query()); err != nil {
+	if err := handlers.sh.Decode(&params, c.Request().URL.Query()); err != nil {
 		panic(err)
 	}
 	if err := validator.New().Struct(params); err != nil {
@@ -113,7 +101,7 @@ func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Reque
 	end := handlers.getDate()
 	end = end.Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, params.Days*-1)
-	stocks, err := handlers.Context.historyAPI.GetHistory(vars.ByName("symbol"), start.AddDate(0, 0, params.Window*-1), end)
+	stocks, err := handlers.Context.historyAPI.GetHistory(c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
 	if err != nil {
 		panic(err)
 	}
@@ -123,14 +111,9 @@ func (handlers *StockHandlers) History(resp http.ResponseWriter, req *http.Reque
 			panic(err)
 		}
 	}
-	stocksAgg, err := handlers.Context.esStock.GetStocksAgg(vars.ByName("symbol"), params.Window, params.Step, start, end)
+	stocksAgg, err := handlers.Context.esStock.GetStocksAgg(c.Param("symbol"), params.Window, params.Step, start, end)
 	if err != nil {
 		panic(err)
 	}
-	bresp, err := json.Marshal(stocksAgg)
-	if err != nil {
-		panic(err)
-	}
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write(bresp)
+	return c.JSON(http.StatusOK, stocksAgg)
 }

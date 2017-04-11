@@ -20,7 +20,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/clebi/yfinance"
-	"github.com/julienschmidt/httprouter"
+	"github.com/labstack/echo"
 	"github.com/rs/cors"
 	elastic "gopkg.in/olivere/elastic.v5"
 
@@ -62,7 +62,7 @@ func main() {
 	}
 
 	stockHandlers := NewStockHandlers(&context)
-	router := httprouter.New()
+	router := echo.New()
 	router.GET("/graph/:symbol", stockHandlers.History)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
