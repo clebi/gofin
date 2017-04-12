@@ -15,13 +15,10 @@
 package main
 
 import (
-	"bytes"
 	"net/http"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/clebi/yfinance"
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 )
@@ -45,7 +42,7 @@ func getYesterDayDate() time.Time {
 	return time.Now().AddDate(0, 0, -1)
 }
 
-type errorHandlerFunc func(c echo.Context)
+type errorHandlerFunc func(c echo.Context, status int, err error)
 
 // StockHandlers is an object containing all the handlers concerning stocks
 type StockHandlers struct {
@@ -57,31 +54,22 @@ type StockHandlers struct {
 // NewStockHandlers creates a new stock handlers object
 func NewStockHandlers(context *Context) *StockHandlers {
 	return &StockHandlers{
-		Context:      context,
-		getDate:      getYesterDayDate,
-		errorHandler: handleErrors,
+		Context: context,
+		getDate: getYesterDayDate,
 	}
 }
 
-func handleErrors(c echo.Context) {
-	if err := recover(); err != nil {
-		switch err := err.(type) {
-		case finance.YApiError:
-			c.JSON(http.StatusBadRequest, errorDesc{Status: "error", Description: err.Error()})
-		case validator.ValidationErrors:
-			errBuff := bytes.NewBufferString("following parameters are invalid: ")
-			for _, err := range err {
-				errBuff.WriteString(strings.ToLower(err.Field()))
-				errBuff.WriteByte(',')
-			}
-			errBuff.Truncate(errBuff.Len() - 1)
-			errorMsg := errBuff.String()
-			c.JSON(http.StatusBadRequest, errorDesc{Status: "error", Description: errorMsg})
-		default:
-			log.Error(err)
-			c.JSON(http.StatusInternalServerError, errorDesc{Status: "error", Description: "unknown_error"})
-		}
+// handleError writes error to the http channel and logs internal errors
+func (handlers *StockHandlers) handleError(c echo.Context, status int, err error) error {
+	var msg string
+	if status == http.StatusInternalServerError {
+		log.Error(err)
+		msg = "unknown_error"
+	} else {
+		msg = err.Error()
 	}
+	c.JSON(status, errorDesc{Status: "error", Description: msg})
+	return nil
 }
 
 // History retrieve stocks history
@@ -90,30 +78,29 @@ func handleErrors(c echo.Context) {
 //
 // This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) History(c echo.Context) error {
-	defer handlers.errorHandler(c)
 	var params HistoryParams
 	if err := handlers.sh.Decode(&params, c.Request().URL.Query()); err != nil {
-		panic(err)
+		return handlers.handleError(c, http.StatusInternalServerError, err)
 	}
 	if err := validator.New().Struct(params); err != nil {
-		panic(err)
+		return handlers.handleError(c, http.StatusBadRequest, err)
 	}
 	end := handlers.getDate()
 	end = end.Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, params.Days*-1)
 	stocks, err := handlers.Context.historyAPI.GetHistory(c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
 	if err != nil {
-		panic(err)
+		return handlers.handleError(c, http.StatusBadRequest, err)
 	}
 	for _, stock := range stocks {
 		err = handlers.Context.esStock.Index(stock)
 		if err != nil {
-			panic(err)
+			return handlers.handleError(c, http.StatusInternalServerError, err)
 		}
 	}
 	stocksAgg, err := handlers.Context.esStock.GetStocksAgg(c.Param("symbol"), params.Window, params.Step, start, end)
 	if err != nil {
-		panic(err)
+		return handlers.handleError(c, http.StatusInternalServerError, err)
 	}
 	return c.JSON(http.StatusOK, stocksAgg)
 }

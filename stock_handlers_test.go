@@ -23,50 +23,24 @@ import (
 	"time"
 
 	finance "github.com/clebi/yfinance"
-	"github.com/go-playground/validator"
 	schema "github.com/gorilla/Schema"
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
+	testHistoryMethod  = "GET"
+	testHistoryRequest = "http://test.test/graph/TEST?days=3&window=2&step=2"
 	symbolTest         = "TEST"
+	unknownErrorMsg    = "unknown_error"
 	unknownErrorResp   = "{\"status\":\"error\",\"description\":\"unknown_error\"}"
-	yapiErrorMsg       = "test_error"
-	yapiErrorLang      = "en-US"
-	yapiErrorResp      = "{\"status\":\"error\",\"description\":\"" + yapiErrorMsg + "\"}"
-	validatorErrorResp = "{\"status\":\"error\",\"description\":\"following parameters are invalid:\"}"
+	badRequestMsg      = "bad_request"
+	badRequestResp     = "{\"status\":\"error\",\"description\":\"bad_request\"}"
 )
-
-type mockHistoryAPI struct {
-	mock.Mock
-}
-
-func (mock *mockHistoryAPI) GetHistory(symbol string, start time.Time, end time.Time) ([]finance.Stock, error) {
-	args := mock.Called(symbol, start, end)
-	stocks := args.Get(0).([]finance.Stock)
-	return stocks, args.Error(1)
-}
 
 func getTestDate() time.Time {
 	time, _ := time.Parse(time.RFC3339, "2016-12-13T01:24:23Z")
 	return time
-}
-
-type mockEsStock struct {
-	mock.Mock
-}
-
-func (mock *mockEsStock) Index(stock finance.Stock) error {
-	args := mock.Called(stock)
-	return args.Error(0)
-}
-
-func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error) {
-	args := mock.Called(symbol, movAvgWindow, step, startDate, endDate)
-	stocks := args.Get(0).([]EsStocksAgg)
-	return stocks, args.Error(1)
 }
 
 var (
@@ -89,12 +63,9 @@ func TestHistory(t *testing.T) {
 	mockedEsStock.On("Index", stock).Return(nil)
 	mockedEsStock.On("GetStocksAgg", symbolTest, 2, 2, testStartDate, testEndDate).Return(stocksAgg, nil)
 	resp := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "http://test.test/graph/TEST?days=3&window=2&step=2", nil)
+	req, err := http.NewRequest(testHistoryMethod, testHistoryRequest, nil)
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-	errorHandlerNone := func(c echo.Context) {
-		assert.Nil(t, recover())
 	}
 	handlers := StockHandlers{
 		Context: &Context{
@@ -102,8 +73,7 @@ func TestHistory(t *testing.T) {
 			historyAPI: &mockedHistoryAPI,
 			esStock:    &mockedEsStock,
 		},
-		getDate:      getTestDate,
-		errorHandler: errorHandlerNone,
+		getDate: getTestDate,
 	}
 	e := echo.New()
 	c := e.NewContext(req, resp)
@@ -114,40 +84,26 @@ func TestHistory(t *testing.T) {
 	assert.Equal(t, string(stockAggJSON), resp.Body.String())
 }
 
-func TestHandleErrorsUnknown(t *testing.T) {
+func TestHandleErrorInternal(t *testing.T) {
 	resp := httptest.NewRecorder()
-	defer func() {
-		assert.Equal(t, http.StatusInternalServerError, resp.Result().StatusCode)
-		assert.Equal(t, unknownErrorResp, resp.Body.String())
-	}()
 	e := echo.New()
 	c := e.NewContext(nil, resp)
-	defer handleErrors(c)
-	panic(errors.New("unknown"))
+	handlers := StockHandlers{
+		Context: nil,
+		getDate: nil,
+	}
+	handlers.handleError(c, http.StatusInternalServerError, errors.New(unknownErrorMsg))
+	assert.Equal(t, unknownErrorResp, resp.Body.String())
 }
 
-func TestHandleErrorsYApiError(t *testing.T) {
+func TestHandleError(t *testing.T) {
 	resp := httptest.NewRecorder()
-	defer func() {
-		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
-		assert.Equal(t, yapiErrorResp, resp.Body.String())
-	}()
 	e := echo.New()
 	c := e.NewContext(nil, resp)
-	defer handleErrors(c)
-	panic(finance.YApiError{Content: finance.YApiErrorContent{Lang: yapiErrorLang, Description: yapiErrorMsg}})
-}
-
-func TestHandleErrorsValidationError(t *testing.T) {
-	resp := httptest.NewRecorder()
-	defer func() {
-		assert.Equal(t, http.StatusBadRequest, resp.Result().StatusCode)
-		assert.Equal(t, validatorErrorResp, resp.Body.String())
-	}()
-	e := echo.New()
-	c := e.NewContext(nil, resp)
-	defer handleErrors(c)
-	// FIXME put validation error objects into fieldErrors
-	fieldErrors := validator.ValidationErrors{}
-	panic(fieldErrors)
+	handlers := StockHandlers{
+		Context: nil,
+		getDate: nil,
+	}
+	handlers.handleError(c, http.StatusBadRequest, errors.New(badRequestMsg))
+	assert.Equal(t, badRequestResp, resp.Body.String())
 }
