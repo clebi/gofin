@@ -31,11 +31,16 @@ const (
 	defaultServerURL = ":9000"
 )
 
+// SchemaDecoder decodes URL query to struct
+type SchemaDecoder interface {
+	Decode(dst interface{}, src map[string][]string) error
+}
+
 // Context is the context of the application
 // It contains resources that needs to be access in http handlers
 type Context struct {
 	es         *elastic.Client
-	sh         *schema.Decoder
+	sh         SchemaDecoder
 	historyAPI finance.HistoryAPI
 	esStock    IEsStock
 }

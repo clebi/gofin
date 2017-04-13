@@ -36,12 +36,9 @@ const (
 	unknownErrorResp   = "{\"status\":\"error\",\"description\":\"unknown_error\"}"
 	badRequestMsg      = "bad_request"
 	badRequestResp     = "{\"status\":\"error\",\"description\":\"bad_request\"}"
+	decoderErrorMsg    = "decoder_error"
+	genericErrorMsg    = "generic_error"
 )
-
-func getTestDate() time.Time {
-	time, _ := time.Parse(time.RFC3339, "2016-12-13T01:24:23Z")
-	return time
-}
 
 var (
 	testEndDate      = getTestDate().Truncate(24 * time.Hour)
@@ -73,7 +70,8 @@ func TestHistory(t *testing.T) {
 			historyAPI: &mockedHistoryAPI,
 			esStock:    &mockedEsStock,
 		},
-		getDate: getTestDate,
+		validator: &DummyStructValidator{},
+		getDate:   getTestDate,
 	}
 	e := echo.New()
 	c := e.NewContext(req, resp)
@@ -84,26 +82,76 @@ func TestHistory(t *testing.T) {
 	assert.Equal(t, string(stockAggJSON), resp.Body.String())
 }
 
-func TestHandleErrorInternal(t *testing.T) {
-	resp := httptest.NewRecorder()
-	e := echo.New()
-	c := e.NewContext(nil, resp)
-	handlers := StockHandlers{
-		Context: nil,
-		getDate: nil,
+var errorTests = []struct {
+	context         *Context
+	getDate         GetDateFunc
+	validator       StructValidator
+	expectedStatus  int
+	expectedMessage string
+}{
+	{
+		&Context{sh: &ErrorSchemaDecoder{Msg: genericErrorMsg}},
+		getTestDate,
+		nil,
+		http.StatusInternalServerError,
+		genericErrorMsg,
+	},
+	{
+		&Context{sh: &DummySchemaDecoder{}},
+		getTestDate,
+		&ErrorStructValidator{Msg: genericErrorMsg},
+		http.StatusBadRequest,
+		genericErrorMsg,
+	},
+	{
+		&Context{sh: &DummySchemaDecoder{}, historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg}},
+		getTestDate,
+		&DummyStructValidator{},
+		http.StatusBadRequest,
+		genericErrorMsg,
+	},
+	{
+		&Context{sh: &DummySchemaDecoder{}, historyAPI: &OneItemFinanceAPI{}, esStock: &ErrorEsStock{Msg: genericErrorMsg}},
+		getTestDate,
+		&DummyStructValidator{},
+		http.StatusInternalServerError,
+		genericErrorMsg,
+	},
+	{
+		&Context{sh: &DummySchemaDecoder{}, historyAPI: &DummyFinanceAPI{}, esStock: &ErrorEsStock{Msg: genericErrorMsg}},
+		getTestDate,
+		&DummyStructValidator{},
+		http.StatusInternalServerError,
+		genericErrorMsg,
+	},
+}
+
+func TestSchemaDecodeError(t *testing.T) {
+	for _, tt := range errorTests {
+		handlers := StockHandlers{
+			Context:      tt.context,
+			getDate:      tt.getDate,
+			validator:    tt.validator,
+			errorHandler: createErrorHandler(t, tt.expectedStatus, tt.expectedMessage),
+		}
+		req, err := http.NewRequest(testHistoryMethod, testHistoryRequest, nil)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		c, _ := createEcho(req)
+		res := handlers.History(c)
+		assert.NotNil(t, res)
 	}
-	handlers.handleError(c, http.StatusInternalServerError, errors.New(unknownErrorMsg))
+}
+
+func TestHandleErrorInternal(t *testing.T) {
+	c, resp := createEcho(nil)
+	handleError(c, http.StatusInternalServerError, errors.New(unknownErrorMsg))
 	assert.Equal(t, unknownErrorResp, resp.Body.String())
 }
 
 func TestHandleError(t *testing.T) {
-	resp := httptest.NewRecorder()
-	e := echo.New()
-	c := e.NewContext(nil, resp)
-	handlers := StockHandlers{
-		Context: nil,
-		getDate: nil,
-	}
-	handlers.handleError(c, http.StatusBadRequest, errors.New(badRequestMsg))
+	c, resp := createEcho(nil)
+	handleError(c, http.StatusBadRequest, errors.New(badRequestMsg))
 	assert.Equal(t, badRequestResp, resp.Body.String())
 }
