@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
+	"time"
+
 	finance "github.com/clebi/yfinance"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 type mockHistoryAPI struct {
@@ -36,6 +37,9 @@ type DummySchemaDecoder struct {
 }
 
 func (decoder *DummySchemaDecoder) Decode(dst interface{}, src map[string][]string) error {
+	if params, ok := dst.(*HistoryListParams); ok {
+		params.Symbols = append(params.Symbols, "TEST")
+	}
 	return nil
 }
 

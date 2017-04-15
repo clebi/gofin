@@ -35,6 +35,18 @@ type HistoryParams struct {
 	Step   int `schema:"step" validate:"gt=0"`
 }
 
+// HistoryListParams contains all the parameters for the history list route
+type HistoryListParams struct {
+	HistoryParams
+	Symbols []string `schema:"symbols"`
+}
+
+// HandlerERROR represents an error to send through http
+type HandlerERROR struct {
+	error
+	Status int
+}
+
 // GetDateFunc is responsible for get end date
 type GetDateFunc func() time.Time
 
@@ -80,6 +92,36 @@ func handleError(c echo.Context, status int, err error) error {
 	return nil
 }
 
+func (handlers *StockHandlers) getDates(from time.Time, days int) (time.Time, time.Time) {
+	end := from.Truncate(24 * time.Hour)
+	start := end.AddDate(0, 0, days*-1)
+	return start, end
+}
+
+func (handlers *StockHandlers) getQuery(c echo.Context, params interface{}) *HandlerERROR {
+	if err := handlers.sh.Decode(params, c.Request().URL.Query()); err != nil {
+		return &HandlerERROR{error: err, Status: http.StatusInternalServerError}
+	}
+	if err := handlers.validator.Struct(params); err != nil {
+		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
+	}
+	return nil
+}
+
+func (handlers *StockHandlers) indexStock(symbol string, start time.Time, end time.Time) *HandlerERROR {
+	stocks, err := handlers.Context.historyAPI.GetHistory(symbol, start, end)
+	if err != nil {
+		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
+	}
+	for _, stock := range stocks {
+		err = handlers.Context.esStock.Index(stock)
+		if err != nil {
+			return &HandlerERROR{error: err, Status: http.StatusInternalServerError}
+		}
+	}
+	return nil
+}
+
 // History retrieve stocks history
 //
 //  handlers.History(w, r)
@@ -87,28 +129,43 @@ func handleError(c echo.Context, status int, err error) error {
 // This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) History(c echo.Context) error {
 	var params HistoryParams
-	if err := handlers.sh.Decode(&params, c.Request().URL.Query()); err != nil {
-		return handlers.errorHandler(c, http.StatusInternalServerError, err)
+	if handlerErr := handlers.getQuery(c, &params); handlerErr != nil {
+		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
-	if err := handlers.validator.Struct(params); err != nil {
-		return handlers.errorHandler(c, http.StatusBadRequest, err)
-	}
-	end := handlers.getDate()
-	end = end.Truncate(24 * time.Hour)
-	start := end.AddDate(0, 0, params.Days*-1)
-	stocks, err := handlers.Context.historyAPI.GetHistory(c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
-	if err != nil {
-		return handlers.errorHandler(c, http.StatusBadRequest, err)
-	}
-	for _, stock := range stocks {
-		err = handlers.Context.esStock.Index(stock)
-		if err != nil {
-			return handlers.errorHandler(c, http.StatusInternalServerError, err)
-		}
+	start, end := handlers.getDates(handlers.getDate(), params.Days)
+	httpErr := handlers.indexStock(c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
+	if httpErr != nil {
+		return handlers.errorHandler(c, httpErr.Status, httpErr.error)
 	}
 	stocksAgg, err := handlers.Context.esStock.GetStocksAgg(c.Param("symbol"), params.Window, params.Step, start, end)
 	if err != nil {
 		return handlers.errorHandler(c, http.StatusInternalServerError, err)
 	}
 	return c.JSON(http.StatusOK, stocksAgg)
+}
+
+// HistoryList retrieve a stock history list
+//
+//  handlers.History(w, r)
+//
+// This function is a handler for http server, it should not be called directly
+func (handlers *StockHandlers) HistoryList(c echo.Context) error {
+	var params HistoryListParams
+	if handlerErr := handlers.getQuery(c, &params); handlerErr != nil {
+		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
+	}
+	start, end := handlers.getDates(handlers.getDate(), params.Days)
+	var stocks [][]EsStocksAgg
+	for _, symbol := range params.Symbols {
+		httpErr := handlers.indexStock(symbol, start.AddDate(0, 0, params.Window*-1), end)
+		if httpErr != nil {
+			return handlers.errorHandler(c, httpErr.Status, httpErr.error)
+		}
+		stocksAgg, err := handlers.Context.esStock.GetStocksAgg(symbol, params.Window, params.Step, start, end)
+		if err != nil {
+			return handlers.errorHandler(c, http.StatusInternalServerError, err)
+		}
+		stocks = append(stocks, stocksAgg)
+	}
+	return c.JSON(http.StatusOK, stocks)
 }
