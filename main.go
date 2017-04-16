@@ -68,7 +68,7 @@ func main() {
 
 	stockHandlers := NewStockHandlers(&context)
 	router := echo.New()
-	router.GET("/graph/:symbol", stockHandlers.History)
+	router.GET("/history/:symbol", stockHandlers.History)
 	router.GET("/history/list", stockHandlers.HistoryList)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
