@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo"
 )
 
-// PositionHandlers handles all request to positon management
+// PositionHandlers handles all request to position management
 type PositionHandlers struct {
 	*Context
 	validator    StructValidator
