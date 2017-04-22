@@ -51,21 +51,6 @@ func (decoder *ErrorSchemaDecoder) Decode(dst interface{}, src map[string][]stri
 	return errors.New(decoder.Msg)
 }
 
-type DummyStructValidator struct {
-}
-
-func (validator *DummyStructValidator) Struct(s interface{}) error {
-	return nil
-}
-
-type ErrorStructValidator struct {
-	Msg string
-}
-
-func (validator *ErrorStructValidator) Struct(s interface{}) error {
-	return errors.New(validator.Msg)
-}
-
 type ErrorFinanceAPI struct {
 	Msg string
 }

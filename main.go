@@ -43,6 +43,7 @@ type Context struct {
 	sh         SchemaDecoder
 	historyAPI finance.HistoryAPI
 	esStock    IEsStock
+	esPosition IEsPositionStock
 }
 
 func main() {
@@ -64,12 +65,15 @@ func main() {
 		sh:         sh,
 		historyAPI: finance.NewHistory(),
 		esStock:    NewEsStock(es),
+		esPosition: NewEsPosition(es),
 	}
 
 	stockHandlers := NewStockHandlers(&context)
+	positionHandlers := NewPositionHandlers(&context)
 	router := echo.New()
 	router.GET("/history/:symbol", stockHandlers.History)
 	router.GET("/history/list", stockHandlers.HistoryList)
+	router.POST("/position", positionHandlers.AddPosition)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
 	log.Fatal(http.ListenAndServe(defaultServerURL, handler))

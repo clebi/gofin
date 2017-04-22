@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 )
@@ -77,19 +76,6 @@ func NewStockHandlers(context *Context) *StockHandlers {
 		getDate:      getYesterDayDate,
 		errorHandler: handleError,
 	}
-}
-
-// handleError writes error to the http channel and logs internal errors
-func handleError(c echo.Context, status int, err error) error {
-	var msg string
-	if status == http.StatusInternalServerError {
-		log.Error(err)
-		msg = "unknown_error"
-	} else {
-		msg = err.Error()
-	}
-	c.JSON(status, errorDesc{Status: "error", Description: msg})
-	return nil
 }
 
 func (handlers *StockHandlers) getDates(from time.Time, days int) (time.Time, time.Time) {

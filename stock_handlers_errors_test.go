@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
@@ -9,12 +8,7 @@ import (
 )
 
 const (
-	unknownErrorMsg  = "unknown_error"
-	unknownErrorResp = "{\"status\":\"error\",\"description\":\"unknown_error\"}"
-	badRequestMsg    = "bad_request"
-	badRequestResp   = "{\"status\":\"error\",\"description\":\"bad_request\"}"
-	decoderErrorMsg  = "decoder_error"
-	genericErrorMsg  = "generic_error"
+	genericErrorMsg = "generic_error"
 )
 
 var errorTests = []struct {
@@ -95,16 +89,4 @@ func TestHistoryListErrors(t *testing.T) {
 		res := handlers.HistoryList(c)
 		assert.NotNil(t, res)
 	}
-}
-
-func TestHandleErrorInternal(t *testing.T) {
-	c, resp := createEcho(nil)
-	handleError(c, http.StatusInternalServerError, errors.New(unknownErrorMsg))
-	assert.Equal(t, unknownErrorResp, resp.Body.String())
-}
-
-func TestHandleError(t *testing.T) {
-	c, resp := createEcho(nil)
-	handleError(c, http.StatusBadRequest, errors.New(badRequestMsg))
-	assert.Equal(t, badRequestResp, resp.Body.String())
 }
