@@ -15,7 +15,7 @@ script:
   - go test -coverprofile=handlers.txt -covermode=atomic ./handlers
   - go test -coverprofile=es.txt -covermode=atomic ./es
   - go test -coverprofile=main.txt -covermode=atomic
-  - gocovmerge handlers.txt es.txt main.txt > overall.txt
+  - gocovmerge handlers.txt es.txt main.txt > coverage.txt
   - rm -f handlers.txt es.txt main.txt
 
 after_success:
