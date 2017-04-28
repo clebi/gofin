@@ -1,9 +1,10 @@
-package main
+package handlers
 
 import (
 	"errors"
 	"time"
 
+	"github.com/clebi/gofin/es"
 	finance "github.com/clebi/yfinance"
 	"github.com/stretchr/testify/mock"
 )
@@ -27,9 +28,9 @@ func (mock *mockEsStock) Index(stock finance.Stock) error {
 	return args.Error(0)
 }
 
-func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error) {
+func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.EsStocksAgg, error) {
 	args := mock.Called(symbol, movAvgWindow, step, startDate, endDate)
-	stocks := args.Get(0).([]EsStocksAgg)
+	stocks := args.Get(0).([]es.EsStocksAgg)
 	return stocks, args.Error(1)
 }
 
@@ -81,6 +82,6 @@ func (es *ErrorEsStock) Index(stock finance.Stock) error {
 	return errors.New(es.Msg)
 }
 
-func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error) {
+func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.EsStocksAgg, error) {
 	return nil, errors.New(es.Msg)
 }

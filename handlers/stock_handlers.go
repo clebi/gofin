@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package handlers
 
 import (
 	"net/http"
 	"time"
 
+	"github.com/clebi/gofin/es"
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 )
@@ -141,7 +142,7 @@ func (handlers *StockHandlers) HistoryList(c echo.Context) error {
 		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
 	start, end := handlers.getDates(handlers.getDate(), params.Days)
-	var stocks [][]EsStocksAgg
+	var stocks [][]es.EsStocksAgg
 	for _, symbol := range params.Symbols {
 		httpErr := handlers.indexStock(symbol, start.AddDate(0, 0, params.Window*-1), end)
 		if httpErr != nil {

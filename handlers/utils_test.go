@@ -1,12 +1,13 @@
-package main
+package handlers
 
 import (
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func getTestDate() time.Time {

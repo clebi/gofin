@@ -1,4 +1,4 @@
-package main
+package handlers
 
 // handleError writes error to the http channel and logs internal errors
 import (

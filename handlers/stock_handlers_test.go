@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clebi/gofin/es"
 	finance "github.com/clebi/yfinance"
 	schema "github.com/gorilla/Schema"
 	"github.com/labstack/echo"
@@ -48,7 +49,7 @@ func prepareHisotryCall(
 	request string,
 	respBody interface{},
 	mockedHistoryAPI finance.HistoryAPI,
-	mockedEsStock IEsStock) (*http.Request, []byte, *StockHandlers, error) {
+	mockedEsStock es.IEsStock) (*http.Request, []byte, *StockHandlers, error) {
 	req, err := http.NewRequest(method, request, nil)
 	if err != nil {
 		return nil, nil, nil, err
@@ -76,7 +77,7 @@ func TestHistory(t *testing.T) {
 	stocks := []finance.Stock{stock}
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedHistoryAPI.On("GetHistory", symbolTest, testStartMovDate, testEndDate).Return(stocks, nil)
-	stocksAgg := []EsStocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
+	stocksAgg := []es.EsStocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
 	mockedEsStock := mockEsStock{}
 	mockedEsStock.On("Index", stock).Return(nil)
 	mockedEsStock.On("GetStocksAgg", symbolTest, 2, 2, testStartDate, testEndDate).Return(stocksAgg, nil)
@@ -104,13 +105,13 @@ func TestHistoryList(t *testing.T) {
 		{{Open: 1.1, High: 1.2, Low: 2.3, Close: 2.4, Volume: 111, Symbol: testHistoryListSymbol1, Date: finance.YTime{Time: testStartDate}}},
 		{{Open: 2.1, High: 2.2, Low: 2.3, Close: 2.4, Volume: 222, Symbol: testHistoryListSymbol2, Date: finance.YTime{Time: testStartDate}}},
 	}
-	var stocksAggs [][]EsStocksAgg
+	var stocksAggs [][]es.EsStocksAgg
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedEsStock := mockEsStock{}
 	for _, stockList := range stocks {
 		symbol := stockList[0].Symbol
 		mockedHistoryAPI.On("GetHistory", symbol, testStartMovDate, testEndDate).Return(stockList, nil)
-		stocksAgg := []EsStocksAgg{
+		stocksAgg := []es.EsStocksAgg{
 			{
 				Symbol:   symbol,
 				MsTime:   testStartMovDate.Unix() * 1000,

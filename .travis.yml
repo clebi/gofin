@@ -6,10 +6,16 @@ go:
 install:
   - go get -v github.com/Masterminds/glide
   - cd $GOPATH/src/github.com/Masterminds/glide && git checkout tags/v0.12.3 && go install && cd -
+  - go get github.com/wadey/gocovmerge
+  - cd $GOPATH/src/github.com/wadey/gocovmerge && go install && cd -
   - glide install
 
 script:
-  - go test -coverprofile=coverage.txt -covermode=atomic
+  - go test -coverprofile=handlers.txt -covermode=atomic ./handlers
+  - go test -coverprofile=es.txt -covermode=atomic ./es
+  - go test -coverprofile=main.txt -covermode=atomic
+  - gocovmerge handlers.txt es.txt main.txt > overall.txt
+  - rm -f handlers.txt es.txt main.txt
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

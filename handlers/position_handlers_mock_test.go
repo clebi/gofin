@@ -1,15 +1,16 @@
-package main
+package handlers
 
 import (
 	"errors"
 
+	"github.com/clebi/gofin/es"
 	"github.com/labstack/echo"
 )
 
 type DummyEsPosition struct {
 }
 
-func (posStock *DummyEsPosition) AddPosition(position *Position) error {
+func (posStock *DummyEsPosition) AddPosition(position *es.Position) error {
 	return nil
 }
 
@@ -17,7 +18,7 @@ type ErrorEsPosition struct {
 	Msg string
 }
 
-func (posStock *ErrorEsPosition) AddPosition(position *Position) error {
+func (posStock *ErrorEsPosition) AddPosition(position *es.Position) error {
 	return errors.New(posStock.Msg)
 }
 

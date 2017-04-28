@@ -19,6 +19,8 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/clebi/gofin/es"
+	"github.com/clebi/gofin/handlers"
 	"github.com/clebi/yfinance"
 	"github.com/labstack/echo"
 	"github.com/rs/cors"
@@ -31,28 +33,13 @@ const (
 	defaultServerURL = ":9000"
 )
 
-// SchemaDecoder decodes URL query to struct
-type SchemaDecoder interface {
-	Decode(dst interface{}, src map[string][]string) error
-}
-
-// Context is the context of the application
-// It contains resources that needs to be access in http handlers
-type Context struct {
-	es         *elastic.Client
-	sh         SchemaDecoder
-	historyAPI finance.HistoryAPI
-	esStock    IEsStock
-	esPosition IEsPositionStock
-}
-
 func main() {
 	// Initialize logger
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
 
 	// Initialize elasticsearch client
-	es, err := elastic.NewClient()
+	esClient, err := elastic.NewClient()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,16 +47,16 @@ func main() {
 	sh := schema.NewDecoder()
 	sh.IgnoreUnknownKeys(true)
 	// Initialize app context
-	context := Context{
-		es:         es,
-		sh:         sh,
-		historyAPI: finance.NewHistory(),
-		esStock:    NewEsStock(es),
-		esPosition: NewEsPosition(es),
-	}
+	context := handlers.NewContext(
+		esClient,
+		sh,
+		finance.NewHistory(),
+		es.NewEsStock(esClient),
+		es.NewEsPosition(esClient),
+	)
 
-	stockHandlers := NewStockHandlers(&context)
-	positionHandlers := NewPositionHandlers(&context)
+	stockHandlers := handlers.NewStockHandlers(context)
+	positionHandlers := handlers.NewPositionHandlers(context)
 	router := echo.New()
 	router.GET("/history/:symbol", stockHandlers.History)
 	router.GET("/history/list", stockHandlers.HistoryList)
