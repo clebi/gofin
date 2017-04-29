@@ -26,7 +26,7 @@ const (
 	positionErrorMsg = "position_error_msg"
 )
 
-var positionErrorTests = []struct {
+var addPositionErrorTests = []struct {
 	echo            echo.Context
 	context         *Context
 	validator       StructValidator
@@ -57,7 +57,7 @@ var positionErrorTests = []struct {
 }
 
 func TestAddPositionErrors(t *testing.T) {
-	for _, tt := range positionErrorTests {
+	for _, tt := range addPositionErrorTests {
 		handlers := PositionHandlers{
 			Context:      tt.context,
 			validator:    tt.validator,
@@ -68,6 +68,35 @@ func TestAddPositionErrors(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 		res := handlers.AddPosition(tt.echo)
+		assert.NotNil(t, res)
+	}
+}
+
+var getPositionErrorTests = []struct {
+	echo            echo.Context
+	context         *Context
+	expectedStatus  int
+	expectedMessage string
+}{
+	{
+		&DummyEchoBind{},
+		&Context{esPosition: &ErrorEsPosition{Msg: positionErrorMsg}},
+		http.StatusInternalServerError,
+		positionErrorMsg,
+	},
+}
+
+func TestGetPositionsErrors(t *testing.T) {
+	for _, tt := range getPositionErrorTests {
+		handlers := PositionHandlers{
+			Context:      tt.context,
+			errorHandler: createErrorHandler(t, tt.expectedStatus, tt.expectedMessage),
+		}
+		_, err := http.NewRequest(testHistoryListMethod, testHistoryListRequest, nil)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		res := handlers.GetPositions(tt.echo)
 		assert.NotNil(t, res)
 	}
 }

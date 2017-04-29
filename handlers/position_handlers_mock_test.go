@@ -22,10 +22,15 @@ import (
 )
 
 type DummyEsPosition struct {
+	PositionAgg []es.PositionAgg
 }
 
 func (posStock *DummyEsPosition) AddPosition(position *es.Position) error {
 	return nil
+}
+
+func (posStock *DummyEsPosition) GetPositions(username string) ([]es.PositionAgg, error) {
+	return posStock.PositionAgg, nil
 }
 
 type ErrorEsPosition struct {
@@ -34,6 +39,10 @@ type ErrorEsPosition struct {
 
 func (posStock *ErrorEsPosition) AddPosition(position *es.Position) error {
 	return errors.New(posStock.Msg)
+}
+
+func (posStock *ErrorEsPosition) GetPositions(username string) ([]es.PositionAgg, error) {
+	return nil, errors.New(posStock.Msg)
 }
 
 type ErrorEchoBind struct {

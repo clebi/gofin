@@ -19,12 +19,14 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/clebi/gofin/es"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
 	addPositionData = "{\"username\":\"test_username\",\"broker\":\"test\",\"symbol\":\"test\"," +
 		"\"date\":\"2017-04-20T13:00:45Z\",\"number\":1,\"value\":22,\"cost\":24}"
+	getPositionsData = "[{\"Symbol\":\"test_agg\",\"Number\":5,\"Cost\":14}]"
 )
 
 func TestAddPosition(t *testing.T) {
@@ -42,4 +44,22 @@ func TestAddPosition(t *testing.T) {
 	c, resp := createEcho(req)
 	handlers.AddPosition(c)
 	assert.Equal(t, addPositionData, resp.Body.String())
+}
+
+func TestGetPositions(t *testing.T) {
+	handlers := &PositionHandlers{
+		Context: &Context{
+			esPosition: &DummyEsPosition{
+				PositionAgg: []es.PositionAgg{{Symbol: "test_agg", Number: 5, Cost: 14}},
+			},
+		},
+	}
+	req, err := http.NewRequest("POST", "http://test.test/position", bytes.NewBufferString(addPositionData))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c, resp := createEcho(req)
+	handlers.GetPositions(c)
+	assert.Equal(t, getPositionsData, resp.Body.String())
 }

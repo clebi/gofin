@@ -61,6 +61,7 @@ func main() {
 	router.GET("/history/:symbol", stockHandlers.History)
 	router.GET("/history/list", stockHandlers.HistoryList)
 	router.POST("/position", positionHandlers.AddPosition)
+	router.GET("/position", positionHandlers.GetPositions)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
 	log.Fatal(http.ListenAndServe(defaultServerURL, handler))

@@ -54,3 +54,14 @@ func (handlers *PositionHandlers) AddPosition(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, position)
 }
+
+// GetPositions handles http request to retrieve the user's positions
+//
+// This function is a handler for http server, it should not be called directly
+func (handlers *PositionHandlers) GetPositions(c echo.Context) error {
+	positions, err := handlers.esPosition.GetPositions("tester")
+	if err != nil {
+		return handlers.errorHandler(c, http.StatusInternalServerError, err)
+	}
+	return c.JSON(http.StatusOK, positions)
+}
