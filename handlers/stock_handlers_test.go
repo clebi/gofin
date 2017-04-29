@@ -49,7 +49,7 @@ func prepareHisotryCall(
 	request string,
 	respBody interface{},
 	mockedHistoryAPI finance.HistoryAPI,
-	mockedEsStock es.IEsStock) (*http.Request, []byte, *StockHandlers, error) {
+	mockedStock es.IStock) (*http.Request, []byte, *StockHandlers, error) {
 	req, err := http.NewRequest(method, request, nil)
 	if err != nil {
 		return nil, nil, nil, err
@@ -64,7 +64,7 @@ func prepareHisotryCall(
 		Context: &Context{
 			sh:         schema.NewDecoder(),
 			historyAPI: mockedHistoryAPI,
-			esStock:    mockedEsStock,
+			esStock:    mockedStock,
 		},
 		validator: &DummyStructValidator{},
 		getDate:   getTestDate,
@@ -77,7 +77,7 @@ func TestHistory(t *testing.T) {
 	stocks := []finance.Stock{stock}
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedHistoryAPI.On("GetHistory", symbolTest, testStartMovDate, testEndDate).Return(stocks, nil)
-	stocksAgg := []es.EsStocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
+	stocksAgg := []es.StocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
 	mockedEsStock := mockEsStock{}
 	mockedEsStock.On("Index", stock).Return(nil)
 	mockedEsStock.On("GetStocksAgg", symbolTest, 2, 2, testStartDate, testEndDate).Return(stocksAgg, nil)
@@ -105,13 +105,13 @@ func TestHistoryList(t *testing.T) {
 		{{Open: 1.1, High: 1.2, Low: 2.3, Close: 2.4, Volume: 111, Symbol: testHistoryListSymbol1, Date: finance.YTime{Time: testStartDate}}},
 		{{Open: 2.1, High: 2.2, Low: 2.3, Close: 2.4, Volume: 222, Symbol: testHistoryListSymbol2, Date: finance.YTime{Time: testStartDate}}},
 	}
-	var stocksAggs [][]es.EsStocksAgg
+	var stocksAggs [][]es.StocksAgg
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedEsStock := mockEsStock{}
 	for _, stockList := range stocks {
 		symbol := stockList[0].Symbol
 		mockedHistoryAPI.On("GetHistory", symbol, testStartMovDate, testEndDate).Return(stockList, nil)
-		stocksAgg := []es.EsStocksAgg{
+		stocksAgg := []es.StocksAgg{
 			{
 				Symbol:   symbol,
 				MsTime:   testStartMovDate.Unix() * 1000,

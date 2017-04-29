@@ -42,9 +42,9 @@ func (mock *mockEsStock) Index(stock finance.Stock) error {
 	return args.Error(0)
 }
 
-func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.EsStocksAgg, error) {
+func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
 	args := mock.Called(symbol, movAvgWindow, step, startDate, endDate)
-	stocks := args.Get(0).([]es.EsStocksAgg)
+	stocks := args.Get(0).([]es.StocksAgg)
 	return stocks, args.Error(1)
 }
 
@@ -96,6 +96,6 @@ func (es *ErrorEsStock) Index(stock finance.Stock) error {
 	return errors.New(es.Msg)
 }
 
-func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.EsStocksAgg, error) {
+func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
 	return nil, errors.New(es.Msg)
 }

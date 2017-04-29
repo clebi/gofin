@@ -33,19 +33,19 @@ type Position struct {
 	Cost     float64   `json:"cost,float" validate:"gt=0"`
 }
 
-// IEsPositionStock contains all es position stock actions
-type IEsPositionStock interface {
+// IPositionStock contains all es position stock actions
+type IPositionStock interface {
 	AddPosition(position *Position) error
 }
 
-// EsPositionStock manage positons in elasticsearch
-type EsPositionStock struct {
+// PositionStock manage positons in elasticsearch
+type PositionStock struct {
 	es *elastic.Client
 }
 
-// NewEsPosition create a new elasticsearch poisitons manager
-func NewEsPosition(es *elastic.Client) IEsPositionStock {
-	return &EsPositionStock{
+// NewPosition create a new elasticsearch poisitons manager
+func NewPosition(es *elastic.Client) IPositionStock {
+	return &PositionStock{
 		es: es,
 	}
 }
@@ -55,7 +55,7 @@ func NewEsPosition(es *elastic.Client) IEsPositionStock {
 //  AddPosition(position)
 //
 //  return the inserted position
-func (posStock *EsPositionStock) AddPosition(position *Position) error {
+func (posStock *PositionStock) AddPosition(position *Position) error {
 	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
 	defer esCancel()
 	positionMap := map[string]interface{}{

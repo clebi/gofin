@@ -33,34 +33,34 @@ const (
 	movCloseAggregationName = "mov_close"
 )
 
-// EsStocksAgg is the a stock aggregation
-type EsStocksAgg struct {
+// StocksAgg is the a stock aggregation
+type StocksAgg struct {
 	Symbol   string  `json:"symbol"`
 	MsTime   int64   `json:"mstime"`
 	AvgClose float64 `json:"close"`
 	MovClose float64 `json:"mv_close"`
 }
 
-// IEsStock contains elasticsearch manager actions
-type IEsStock interface {
+// IStock contains elasticsearch manager actions
+type IStock interface {
 	Index(stock finance.Stock) error
-	GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error)
+	GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]StocksAgg, error)
 }
 
-// EsStock manage stocks in elasticsearch
-type EsStock struct {
+// Stock manage stocks in elasticsearch
+type Stock struct {
 	es *elastic.Client
 }
 
-// NewEsStock create a new elasticsearch manager object
-func NewEsStock(es *elastic.Client) IEsStock {
-	return &EsStock{
+// NewStock create a new elasticsearch manager object
+func NewStock(es *elastic.Client) IStock {
+	return &Stock{
 		es: es,
 	}
 }
 
 // Index is used to index a stock into elasticsearch
-func (esStock *EsStock) Index(stock finance.Stock) error {
+func (esStock *Stock) Index(stock finance.Stock) error {
 	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
 	defer esCancel()
 	stockMap := map[string]interface{}{
@@ -89,7 +89,7 @@ func (esStock *EsStock) Index(stock finance.Stock) error {
 //  GetStocksAgg("TEST", startDate, endDate)
 //
 // returns an array ofg stocks aggregations
-func (esStock *EsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]EsStocksAgg, error) {
+func (esStock *Stock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]StocksAgg, error) {
 	movStartDate := startDate.AddDate(0, 0, movAvgWindow*-1)
 	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
 	defer esCancel()
@@ -118,11 +118,11 @@ func (esStock *EsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, 
 		return nil, err
 	}
 	resAgg, _ := results.Aggregations.DateHistogram(timeAggregationName)
-	stocks := make([]EsStocksAgg, len(resAgg.Buckets))
+	stocks := make([]StocksAgg, len(resAgg.Buckets))
 	for i, bucket := range resAgg.Buckets {
 		avg, _ := bucket.Avg(avgCloseAggregationName)
 		mov, movOk := bucket.MovAvg(movCloseAggregationName)
-		stocks[i] = EsStocksAgg{
+		stocks[i] = StocksAgg{
 			Symbol:   symbol,
 			MsTime:   int64(bucket.Key),
 			AvgClose: *avg.Value,

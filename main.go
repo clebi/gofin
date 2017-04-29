@@ -51,8 +51,8 @@ func main() {
 		esClient,
 		sh,
 		finance.NewHistory(),
-		es.NewEsStock(esClient),
-		es.NewEsPosition(esClient),
+		es.NewStock(esClient),
+		es.NewPosition(esClient),
 	)
 
 	stockHandlers := handlers.NewStockHandlers(context)

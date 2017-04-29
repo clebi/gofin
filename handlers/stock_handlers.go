@@ -142,7 +142,7 @@ func (handlers *StockHandlers) HistoryList(c echo.Context) error {
 		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
 	start, end := handlers.getDates(handlers.getDate(), params.Days)
-	var stocks [][]es.EsStocksAgg
+	var stocks [][]es.StocksAgg
 	for _, symbol := range params.Symbols {
 		httpErr := handlers.indexStock(symbol, start.AddDate(0, 0, params.Window*-1), end)
 		if httpErr != nil {
