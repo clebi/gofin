@@ -51,6 +51,7 @@ func main() {
 		esClient,
 		sh,
 		finance.NewHistory(),
+		finance.NewQuotes(),
 		es.NewStock(esClient),
 		es.NewPosition(esClient),
 	)

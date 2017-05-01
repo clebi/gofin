@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/clebi/gofin/es"
+	finance "github.com/clebi/yfinance"
 	"github.com/labstack/echo"
 )
 
@@ -60,4 +61,20 @@ type DummyEchoBind struct {
 
 func (echo DummyEchoBind) Bind(interface{}) error {
 	return nil
+}
+
+type DummyQuotesAPI struct {
+	quote finance.Quote
+}
+
+func (quotes DummyQuotesAPI) GetQuote(symbol string) (*finance.Quote, error) {
+	return &quotes.quote, nil
+}
+
+type ErrorQuotesAPI struct {
+	Msg string
+}
+
+func (quotes ErrorQuotesAPI) GetQuote(symbol string) (*finance.Quote, error) {
+	return nil, errors.New(quotes.Msg)
 }

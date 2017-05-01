@@ -18,12 +18,14 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/clebi/gofin/es"
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	positionErrorMsg = "position_error_msg"
+	positionErrorMsg         = "position_error_msg"
+	positionQuoteAPIErrorMsg = "position_quote_api_error_msg"
 )
 
 var addPositionErrorTests = []struct {
@@ -83,6 +85,15 @@ var getPositionErrorTests = []struct {
 		&Context{esPosition: &ErrorEsPosition{Msg: positionErrorMsg}},
 		http.StatusInternalServerError,
 		positionErrorMsg,
+	},
+	{
+		&DummyEchoBind{},
+		&Context{
+			esPosition: &DummyEsPosition{PositionAgg: []es.PositionAgg{{Symbol: "test_agg", Number: 5, Cost: 14}}},
+			quotesAPI:  &ErrorQuotesAPI{Msg: positionQuoteAPIErrorMsg},
+		},
+		http.StatusInternalServerError,
+		positionQuoteAPIErrorMsg,
 	},
 }
 

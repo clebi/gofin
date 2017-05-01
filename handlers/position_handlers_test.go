@@ -20,13 +20,14 @@ import (
 	"testing"
 
 	"github.com/clebi/gofin/es"
+	finance "github.com/clebi/yfinance"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
 	addPositionData = "{\"username\":\"test_username\",\"broker\":\"test\",\"symbol\":\"test\"," +
 		"\"date\":\"2017-04-20T13:00:45Z\",\"number\":1,\"value\":22,\"cost\":24}"
-	getPositionsData = "[{\"Symbol\":\"test_agg\",\"Number\":5,\"Cost\":14}]"
+	getPositionsData = "[{\"Symbol\":\"test_agg\",\"Number\":5,\"Cost\":14,\"Name\":\"TEST NAME\",\"Value\":15}]"
 )
 
 func TestAddPosition(t *testing.T) {
@@ -49,6 +50,7 @@ func TestAddPosition(t *testing.T) {
 func TestGetPositions(t *testing.T) {
 	handlers := &PositionHandlers{
 		Context: &Context{
+			quotesAPI: &DummyQuotesAPI{quote: finance.Quote{Name: "TEST NAME", LastTradePriceOnly: 15}},
 			esPosition: &DummyEsPosition{
 				PositionAgg: []es.PositionAgg{{Symbol: "test_agg", Number: 5, Cost: 14}},
 			},

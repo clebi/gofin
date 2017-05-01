@@ -22,6 +22,13 @@ import (
 	"github.com/labstack/echo"
 )
 
+// PositionDisplay contains all fields to display to the client
+type PositionDisplay struct {
+	es.PositionAgg
+	Name  string
+	Value float32
+}
+
 // PositionHandlers handles all request to position management
 type PositionHandlers struct {
 	*Context
@@ -63,5 +70,13 @@ func (handlers *PositionHandlers) GetPositions(c echo.Context) error {
 	if err != nil {
 		return handlers.errorHandler(c, http.StatusInternalServerError, err)
 	}
-	return c.JSON(http.StatusOK, positions)
+	displayPosition := make([]PositionDisplay, len(positions))
+	for i, position := range positions {
+		quote, err := handlers.quotesAPI.GetQuote(position.Symbol)
+		if err != nil {
+			return handlers.errorHandler(c, http.StatusInternalServerError, err)
+		}
+		displayPosition[i] = PositionDisplay{PositionAgg: position, Name: quote.Name, Value: quote.LastTradePriceOnly}
+	}
+	return c.JSON(http.StatusOK, displayPosition)
 }

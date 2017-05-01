@@ -31,6 +31,7 @@ type Context struct {
 	es         *elastic.Client
 	sh         SchemaDecoder
 	historyAPI finance.HistoryAPI
+	quotesAPI  finance.QuotesAPI
 	esStock    es.IStock
 	esPosition es.IPositionStock
 }
@@ -40,12 +41,14 @@ func NewContext(
 	es *elastic.Client,
 	sh SchemaDecoder,
 	historyAPI finance.HistoryAPI,
+	quotesAPI finance.QuotesAPI,
 	esStock es.IStock,
 	esPosition es.IPositionStock) *Context {
 	return &Context{
 		es:         es,
 		sh:         sh,
 		historyAPI: historyAPI,
+		quotesAPI:  quotesAPI,
 		esStock:    esStock,
 		esPosition: esPosition,
 	}
