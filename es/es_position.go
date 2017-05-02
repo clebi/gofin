@@ -35,9 +35,9 @@ type Position struct {
 	Broker   string    `json:"broker" validate:"required"`
 	Symbol   string    `json:"symbol" validate:"required"`
 	Date     time.Time `json:"date,string" validate:"required"`
-	Number   int       `json:"number,int" validate:"gt=0"`
+	Number   int       `json:"number,int" validate:"required"`
 	Value    float64   `json:"value,float" validate:"gt=0"`
-	Cost     float64   `json:"cost,float" validate:"gt=0"`
+	Cost     float64   `json:"cost,float" validate:"required"`
 }
 
 func (position Position) String() string {
