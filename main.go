@@ -22,6 +22,7 @@ import (
 	"github.com/clebi/gofin/es"
 	"github.com/clebi/gofin/handlers"
 	"github.com/clebi/yfinance"
+	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 	"github.com/rs/cors"
 	elastic "gopkg.in/olivere/elastic.v5"
@@ -50,6 +51,7 @@ func main() {
 	context := handlers.NewContext(
 		esClient,
 		sh,
+		validator.New(),
 		finance.NewHistory(),
 		finance.NewQuotes(),
 		es.NewStock(esClient),
@@ -58,11 +60,13 @@ func main() {
 
 	stockHandlers := handlers.NewStockHandlers(context)
 	positionHandlers := handlers.NewPositionHandlers(context)
+	indicatorsHandlers := handlers.NewIndicatorHandlers(context)
 	router := echo.New()
 	router.GET("/history/:symbol", stockHandlers.History)
 	router.GET("/history/list", stockHandlers.HistoryList)
 	router.POST("/position", positionHandlers.AddPosition)
 	router.GET("/position", positionHandlers.GetPositions)
+	router.GET("/indicators", indicatorsHandlers.GetStocks)
 	handler := cors.Default().Handler(router)
 	log.WithFields(log.Fields{"url": defaultServerURL}).Info("Start server")
 	log.Fatal(http.ListenAndServe(defaultServerURL, handler))

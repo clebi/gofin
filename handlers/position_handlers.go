@@ -18,7 +18,6 @@ import (
 	"net/http"
 
 	"github.com/clebi/gofin/es"
-	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 )
 
@@ -32,7 +31,6 @@ type PositionDisplay struct {
 // PositionHandlers handles all request to position management
 type PositionHandlers struct {
 	*Context
-	validator    StructValidator
 	errorHandler errorHandlerFunc
 }
 
@@ -40,7 +38,6 @@ type PositionHandlers struct {
 func NewPositionHandlers(context *Context) *PositionHandlers {
 	return &PositionHandlers{
 		Context:      context,
-		validator:    validator.New(),
 		errorHandler: handleError,
 	}
 }

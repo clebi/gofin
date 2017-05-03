@@ -65,9 +65,9 @@ func prepareHisotryCall(
 			sh:         schema.NewDecoder(),
 			historyAPI: mockedHistoryAPI,
 			esStock:    mockedStock,
+			validator:  &DummyStructValidator{},
 		},
-		validator: &DummyStructValidator{},
-		getDate:   getTestDate,
+		getDate: getTestDate,
 	}
 	return req, stocksAggsJSON, &handlers, nil
 }

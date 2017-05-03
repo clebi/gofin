@@ -31,28 +31,27 @@ const (
 var addPositionErrorTests = []struct {
 	echo            echo.Context
 	context         *Context
-	validator       StructValidator
 	expectedStatus  int
 	expectedMessage string
 }{
 	{
 		&ErrorEchoBind{Msg: positionErrorMsg},
 		nil,
-		nil,
 		http.StatusBadRequest,
 		positionErrorMsg,
 	},
 	{
 		&DummyEchoBind{},
-		nil,
-		&ErrorStructValidator{Msg: positionErrorMsg},
+		&Context{validator: &ErrorStructValidator{Msg: positionErrorMsg}},
 		http.StatusBadRequest,
 		positionErrorMsg,
 	},
 	{
 		&DummyEchoBind{},
-		&Context{esPosition: &ErrorEsPosition{Msg: positionErrorMsg}},
-		&DummyStructValidator{},
+		&Context{
+			esPosition: &ErrorEsPosition{Msg: positionErrorMsg},
+			validator:  &ErrorStructValidator{Msg: positionErrorMsg},
+		},
 		http.StatusBadRequest,
 		positionErrorMsg,
 	},
@@ -62,7 +61,6 @@ func TestAddPositionErrors(t *testing.T) {
 	for _, tt := range addPositionErrorTests {
 		handlers := PositionHandlers{
 			Context:      tt.context,
-			validator:    tt.validator,
 			errorHandler: createErrorHandler(t, tt.expectedStatus, tt.expectedMessage),
 		}
 		_, err := http.NewRequest(testHistoryListMethod, testHistoryListRequest, nil)

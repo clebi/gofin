@@ -30,6 +30,7 @@ type SchemaDecoder interface {
 type Context struct {
 	es         *elastic.Client
 	sh         SchemaDecoder
+	validator  StructValidator
 	historyAPI finance.HistoryAPI
 	quotesAPI  finance.QuotesAPI
 	esStock    es.IStock
@@ -40,6 +41,7 @@ type Context struct {
 func NewContext(
 	es *elastic.Client,
 	sh SchemaDecoder,
+	validator StructValidator,
 	historyAPI finance.HistoryAPI,
 	quotesAPI finance.QuotesAPI,
 	esStock es.IStock,

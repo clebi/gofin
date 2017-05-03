@@ -28,42 +28,50 @@ const (
 var errorTests = []struct {
 	context         *Context
 	getDate         GetDateFunc
-	validator       StructValidator
 	expectedStatus  int
 	expectedMessage string
 }{
 	{
 		&Context{sh: &ErrorSchemaDecoder{Msg: genericErrorMsg}},
 		getTestDate,
-		nil,
 		http.StatusInternalServerError,
 		genericErrorMsg,
 	},
 	{
-		&Context{sh: &DummySchemaDecoder{}},
+		&Context{sh: &DummySchemaDecoder{}, validator: &ErrorStructValidator{Msg: genericErrorMsg}},
 		getTestDate,
-		&ErrorStructValidator{Msg: genericErrorMsg},
 		http.StatusBadRequest,
 		genericErrorMsg,
 	},
 	{
-		&Context{sh: &DummySchemaDecoder{}, historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg}},
+		&Context{
+			sh:         &DummySchemaDecoder{},
+			historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg},
+			validator:  &DummyStructValidator{},
+		},
 		getTestDate,
-		&DummyStructValidator{},
 		http.StatusBadRequest,
 		genericErrorMsg,
 	},
 	{
-		&Context{sh: &DummySchemaDecoder{}, historyAPI: &OneItemFinanceAPI{}, esStock: &ErrorEsStock{Msg: genericErrorMsg}},
+		&Context{
+			sh:         &DummySchemaDecoder{},
+			historyAPI: &OneItemFinanceAPI{},
+			esStock:    &ErrorEsStock{Msg: genericErrorMsg},
+			validator:  &DummyStructValidator{},
+		},
 		getTestDate,
-		&DummyStructValidator{},
 		http.StatusInternalServerError,
 		genericErrorMsg,
 	},
 	{
-		&Context{sh: &DummySchemaDecoder{}, historyAPI: &DummyFinanceAPI{}, esStock: &ErrorEsStock{Msg: genericErrorMsg}},
+		&Context{
+			sh:         &DummySchemaDecoder{},
+			historyAPI: &DummyFinanceAPI{},
+			esStock:    &ErrorEsStock{Msg: genericErrorMsg},
+			validator:  &DummyStructValidator{},
+		},
 		getTestDate,
-		&DummyStructValidator{},
 		http.StatusInternalServerError,
 		genericErrorMsg,
 	},
@@ -74,7 +82,6 @@ func TestHistoryErrors(t *testing.T) {
 		handlers := StockHandlers{
 			Context:      tt.context,
 			getDate:      tt.getDate,
-			validator:    tt.validator,
 			errorHandler: createErrorHandler(t, tt.expectedStatus, tt.expectedMessage),
 		}
 		req, err := http.NewRequest(testHistoryListMethod, testHistoryListRequest, nil)
@@ -92,7 +99,6 @@ func TestHistoryListErrors(t *testing.T) {
 		handlers := StockHandlers{
 			Context:      tt.context,
 			getDate:      tt.getDate,
-			validator:    tt.validator,
 			errorHandler: createErrorHandler(t, tt.expectedStatus, tt.expectedMessage),
 		}
 		req, err := http.NewRequest(testHistoryMethod, testHistoryRequest, nil)

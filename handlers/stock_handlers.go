@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/clebi/gofin/es"
-	"github.com/go-playground/validator"
 	"github.com/labstack/echo"
 )
 
@@ -64,7 +63,6 @@ type errorHandlerFunc func(c echo.Context, status int, err error) error
 // StockHandlers is an object containing all the handlers concerning stocks
 type StockHandlers struct {
 	*Context
-	validator    StructValidator
 	getDate      GetDateFunc
 	errorHandler errorHandlerFunc
 }
@@ -73,7 +71,6 @@ type StockHandlers struct {
 func NewStockHandlers(context *Context) *StockHandlers {
 	return &StockHandlers{
 		Context:      context,
-		validator:    validator.New(),
 		getDate:      getYesterDayDate,
 		errorHandler: handleError,
 	}
@@ -83,16 +80,6 @@ func (handlers *StockHandlers) getDates(from time.Time, days int) (time.Time, ti
 	end := from.Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, days*-1)
 	return start, end
-}
-
-func (handlers *StockHandlers) getQuery(c echo.Context, params interface{}) *HandlerERROR {
-	if err := handlers.sh.Decode(params, c.Request().URL.Query()); err != nil {
-		return &HandlerERROR{error: err, Status: http.StatusInternalServerError}
-	}
-	if err := handlers.validator.Struct(params); err != nil {
-		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
-	}
-	return nil
 }
 
 func (handlers *StockHandlers) indexStock(symbol string, start time.Time, end time.Time) *HandlerERROR {
@@ -116,7 +103,7 @@ func (handlers *StockHandlers) indexStock(symbol string, start time.Time, end ti
 // This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) History(c echo.Context) error {
 	var params HistoryParams
-	if handlerErr := handlers.getQuery(c, &params); handlerErr != nil {
+	if handlerErr := getQuery(c, handlers.Context, &params); handlerErr != nil {
 		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
 	start, end := handlers.getDates(handlers.getDate(), params.Days)
@@ -138,7 +125,7 @@ func (handlers *StockHandlers) History(c echo.Context) error {
 // This function is a handler for http server, it should not be called directly
 func (handlers *StockHandlers) HistoryList(c echo.Context) error {
 	var params HistoryListParams
-	if handlerErr := handlers.getQuery(c, &params); handlerErr != nil {
+	if handlerErr := getQuery(c, handlers.Context, &params); handlerErr != nil {
 		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
 	start, end := handlers.getDates(handlers.getDate(), params.Days)

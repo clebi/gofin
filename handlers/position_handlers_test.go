@@ -34,8 +34,8 @@ func TestAddPosition(t *testing.T) {
 	handlers := &PositionHandlers{
 		Context: &Context{
 			esPosition: &DummyEsPosition{},
+			validator:  &DummyStructValidator{},
 		},
-		validator: &DummyStructValidator{},
 	}
 	req, err := http.NewRequest("POST", "http://test.test/position", bytes.NewBufferString(addPositionData))
 	if err != nil {
