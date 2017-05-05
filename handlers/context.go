@@ -49,6 +49,7 @@ func NewContext(
 	return &Context{
 		es:         es,
 		sh:         sh,
+		validator:  validator,
 		historyAPI: historyAPI,
 		quotesAPI:  quotesAPI,
 		esStock:    esStock,

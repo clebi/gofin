@@ -26,8 +26,8 @@ import (
 const (
 	testGetStocksURL       = "http://test.test/indicator"
 	testGetStocksResultStr = "[{\"Symbol\":\"TEST1\",\"Name\":\"TEST_NAME_1\",\"Value\":1.1,\"MM200\":1.3,\"MM50\":1.2," +
-		"\"MM200D50\":0.923077},{\"Symbol\":\"TEST2\",\"Name\":\"TEST_NAME_2\",\"Value\":2.1,\"MM200\":2.3,\"MM50\":2.2," +
-		"\"MM200D50\":0.9565218}]"
+		"\"MM50D200\":0.923077},{\"Symbol\":\"TEST2\",\"Name\":\"TEST_NAME_2\",\"Value\":2.1,\"MM200\":2.3,\"MM50\":2.2," +
+		"\"MM50D200\":0.9565218}]"
 )
 
 func TestGetStocks(t *testing.T) {

@@ -27,7 +27,7 @@ type Indicator struct {
 	Value    float32
 	MM200    float32
 	MM50     float32
-	MM200D50 float32
+	MM50D200 float32
 }
 
 type getStocksParams struct {
@@ -68,7 +68,7 @@ func (handlers *IndicatorHandlers) GetStocks(c echo.Context) error {
 			Value:    quote.LastTradePriceOnly,
 			MM200:    quote.TwoHundreddayMovingAverage,
 			MM50:     quote.FiftydayMovingAverage,
-			MM200D50: quote.FiftydayMovingAverage / quote.TwoHundreddayMovingAverage,
+			MM50D200: quote.FiftydayMovingAverage / quote.TwoHundreddayMovingAverage,
 		}
 	}
 	return c.JSON(http.StatusOK, indicators)
