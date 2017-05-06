@@ -37,7 +37,7 @@ func TestGetStocks(t *testing.T) {
 			sh:        &IndicatorSchemaDecoder{Symbols: []string{"TEST1", "TEST2"}},
 			validator: &DummyStructValidator{},
 			quotesAPI: &IndicatorQuotesAPI{quotes: map[string]*finance.Quote{
-				"TEST1": &finance.Quote{
+				"TEST1": {
 					Symbol:                     "TEST1",
 					Name:                       "TEST_NAME_1",
 					LastTradePriceOnly:         1.1,
@@ -45,7 +45,7 @@ func TestGetStocks(t *testing.T) {
 					TwoHundreddayMovingAverage: 1.3,
 					Volume: 14,
 				},
-				"TEST2": &finance.Quote{
+				"TEST2": {
 					Symbol:                     "TEST2",
 					Name:                       "TEST_NAME_2",
 					LastTradePriceOnly:         2.1,
