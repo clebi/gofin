@@ -48,6 +48,12 @@ func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int,
 	return stocks, args.Error(1)
 }
 
+func (mock *mockEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
+	args := mock.Called(symbol, startDate, endDate)
+	stocks := args.Get(0).(*es.StocksStats)
+	return stocks, args.Error(1)
+}
+
 type DummySchemaDecoder struct {
 }
 
@@ -98,4 +104,8 @@ func (es *ErrorEsStock) Index(stock finance.Stock) error {
 
 func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
 	return nil, errors.New(es.Msg)
+}
+
+func (es *ErrorEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
+	return nil, nil
 }

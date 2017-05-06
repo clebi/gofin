@@ -16,7 +16,9 @@ package handlers
 
 import (
 	"errors"
+	"time"
 
+	"github.com/clebi/gofin/es"
 	finance "github.com/clebi/yfinance"
 )
 
@@ -39,4 +41,42 @@ type IndicatorQuotesAPI struct {
 
 func (api *IndicatorQuotesAPI) GetQuote(symbol string) (*finance.Quote, error) {
 	return api.quotes[symbol], nil
+}
+
+type IndicatorTestEsStock struct {
+	index int
+	stats []es.StocksStats
+}
+
+func (mock *IndicatorTestEsStock) Index(stock finance.Stock) error {
+	return nil
+}
+
+func (mock *IndicatorTestEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
+	return nil, nil
+}
+
+func (mock *IndicatorTestEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
+	stats := &mock.stats[mock.index]
+	mock.index++
+	return stats, nil
+}
+
+type IndicatorErrorEsStock struct {
+	index int
+	errs  []error
+}
+
+func (mock *IndicatorErrorEsStock) Index(stock finance.Stock) error {
+	return nil
+}
+
+func (mock *IndicatorErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
+	return nil, nil
+}
+
+func (mock *IndicatorErrorEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
+	err := mock.errs[mock.index]
+	mock.index++
+	return nil, err
 }

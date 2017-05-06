@@ -46,13 +46,6 @@ type HandlerERROR struct {
 	Status int
 }
 
-// GetDateFunc is responsible for get end date
-type GetDateFunc func() time.Time
-
-func getYesterDayDate() time.Time {
-	return time.Now().AddDate(0, 0, -1)
-}
-
 // StructValidator validates structures
 type StructValidator interface {
 	Struct(s interface{}) (err error)
@@ -82,20 +75,6 @@ func (handlers *StockHandlers) getDates(from time.Time, days int) (time.Time, ti
 	return start, end
 }
 
-func (handlers *StockHandlers) indexStock(symbol string, start time.Time, end time.Time) *HandlerERROR {
-	stocks, err := handlers.Context.historyAPI.GetHistory(symbol, start, end)
-	if err != nil {
-		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
-	}
-	for _, stock := range stocks {
-		err = handlers.Context.esStock.Index(stock)
-		if err != nil {
-			return &HandlerERROR{error: err, Status: http.StatusInternalServerError}
-		}
-	}
-	return nil
-}
-
 // History retrieve stocks history
 //
 //  handlers.History(w, r)
@@ -107,7 +86,7 @@ func (handlers *StockHandlers) History(c echo.Context) error {
 		return handlers.errorHandler(c, handlerErr.Status, handlerErr.error)
 	}
 	start, end := handlers.getDates(handlers.getDate(), params.Days)
-	httpErr := handlers.indexStock(c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
+	httpErr := indexStock(handlers.Context, c.Param("symbol"), start.AddDate(0, 0, params.Window*-1), end)
 	if httpErr != nil {
 		return handlers.errorHandler(c, httpErr.Status, httpErr.error)
 	}
@@ -131,7 +110,7 @@ func (handlers *StockHandlers) HistoryList(c echo.Context) error {
 	start, end := handlers.getDates(handlers.getDate(), params.Days)
 	var stocks [][]es.StocksAgg
 	for _, symbol := range params.Symbols {
-		httpErr := handlers.indexStock(symbol, start.AddDate(0, 0, params.Window*-1), end)
+		httpErr := indexStock(handlers.Context, symbol, start.AddDate(0, 0, params.Window*-1), end)
 		if httpErr != nil {
 			return handlers.errorHandler(c, httpErr.Status, httpErr.error)
 		}

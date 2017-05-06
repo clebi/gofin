@@ -31,7 +31,15 @@ const (
 	timeAggregationName     = "time_agg"
 	avgCloseAggregationName = "avg_close"
 	movCloseAggregationName = "mov_close"
+	statsAggregationName    = "stats"
 )
+
+// StocksStats contains all stats concerning a stock
+type StocksStats struct {
+	Symbol            string
+	StandardDeviation float64
+	Avg               float64
+}
 
 // StocksAgg is the a stock aggregation
 type StocksAgg struct {
@@ -45,6 +53,7 @@ type StocksAgg struct {
 type IStock interface {
 	Index(stock finance.Stock) error
 	GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]StocksAgg, error)
+	GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*StocksStats, error)
 }
 
 // Stock manage stocks in elasticsearch
@@ -134,4 +143,32 @@ func (esStock *Stock) GetStocksAgg(symbol string, movAvgWindow int, step int, st
 		}
 	}
 	return stocks, nil
+}
+
+// GetStockStats retrives the stats about a stock
+//
+// 	GetStockStats("CW8.PA", startDate, endDate)
+//
+// return the stock stats
+func (esStock *Stock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*StocksStats, error) {
+	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
+	defer esCancel()
+	query := elastic.NewQueryStringQuery(fmt.Sprintf("symbol = %s AND date: [%s TO %s]",
+		symbol, startDate.Format(finance.DateFormat), endDate.Format(finance.DateFormat)))
+	statsAgg := elastic.NewExtendedStatsAggregation().Field("close")
+	results, err := esStock.es.Search(indexName).
+		Type(indexType).
+		Query(query).
+		Aggregation(statsAggregationName, statsAgg).
+		Size(0).
+		Do(esContext)
+	if err != nil {
+		return nil, err
+	}
+	resAgg, _ := results.Aggregations.ExtendedStats(statsAggregationName)
+	return &StocksStats{
+		Symbol:            symbol,
+		StandardDeviation: *resAgg.StdDeviation,
+		Avg:               *resAgg.Avg,
+	}, nil
 }

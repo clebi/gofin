@@ -15,6 +15,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,5 +43,18 @@ func createErrorHandler(t *testing.T, expectedStatus int, expectedErrorMsg strin
 		assert.Equal(t, expectedStatus, status)
 		assert.Equal(t, expectedErrorMsg, err.Error())
 		return err
+	}
+}
+
+func testIndexStockNoError(context *Context, symbol string, start time.Time, end time.Time) *HandlerERROR {
+	return nil
+}
+
+func createTestIndexStockError(status int, msg string) indexStockFunc {
+	return func(context *Context, symbol string, start time.Time, end time.Time) *HandlerERROR {
+		return &HandlerERROR{
+			Status: status,
+			error:  errors.New(msg),
+		}
 	}
 }

@@ -16,9 +16,12 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo"
 )
+
+type indexStockFunc func(context *Context, symbol string, start time.Time, end time.Time) *HandlerERROR
 
 func getQuery(c echo.Context, context *Context, params interface{}) *HandlerERROR {
 	if err := context.sh.Decode(params, c.Request().URL.Query()); err != nil {
@@ -26,6 +29,20 @@ func getQuery(c echo.Context, context *Context, params interface{}) *HandlerERRO
 	}
 	if err := context.validator.Struct(params); err != nil {
 		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
+	}
+	return nil
+}
+
+func indexStock(context *Context, symbol string, start time.Time, end time.Time) *HandlerERROR {
+	stocks, err := context.historyAPI.GetHistory(symbol, start, end)
+	if err != nil {
+		return &HandlerERROR{error: err, Status: http.StatusBadRequest}
+	}
+	for _, stock := range stocks {
+		err = context.esStock.Index(stock)
+		if err != nil {
+			return &HandlerERROR{error: err, Status: http.StatusInternalServerError}
+		}
 	}
 	return nil
 }

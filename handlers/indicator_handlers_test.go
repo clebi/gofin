@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/clebi/gofin/es"
 	finance "github.com/clebi/yfinance"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,8 +27,8 @@ import (
 const (
 	testGetStocksURL       = "http://test.test/indicator"
 	testGetStocksResultStr = "[{\"Symbol\":\"TEST1\",\"Name\":\"TEST_NAME_1\",\"Value\":1.1,\"MM200\":1.3,\"MM50\":1.2," +
-		"\"MM50D200\":0.923077},{\"Symbol\":\"TEST2\",\"Name\":\"TEST_NAME_2\",\"Value\":2.1,\"MM200\":2.3,\"MM50\":2.2," +
-		"\"MM50D200\":0.9565218}]"
+		"\"MM50D200\":0.923077,\"V50\":0.2,\"V200\":0.1},{\"Symbol\":\"TEST2\",\"Name\":\"TEST_NAME_2\",\"Value\":2.1," +
+		"\"MM200\":2.3,\"MM50\":2.2,\"MM50D200\":0.9565218,\"V50\":0.5,\"V200\":0.25}]"
 )
 
 func TestGetStocks(t *testing.T) {
@@ -53,7 +54,18 @@ func TestGetStocks(t *testing.T) {
 					Volume: 24,
 				},
 			}},
+			esStock: &IndicatorTestEsStock{
+				index: 0,
+				stats: []es.StocksStats{
+					{Symbol: "TEST1", Avg: 10, StandardDeviation: 1},
+					{Symbol: "TEST1", Avg: 20, StandardDeviation: 4},
+					{Symbol: "TEST2", Avg: 40, StandardDeviation: 10},
+					{Symbol: "TEST2", Avg: 50, StandardDeviation: 25},
+				},
+			},
 		},
+		getDate:    getTestDate,
+		indexStock: testIndexStockNoError,
 	}
 	req, err := http.NewRequest("POST", testGetStocksURL, bytes.NewBufferString(addPositionData))
 	if err != nil {
