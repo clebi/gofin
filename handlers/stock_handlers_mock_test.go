@@ -34,24 +34,16 @@ func (mock *mockHistoryAPI) GetHistory(symbol string, start time.Time, end time.
 }
 
 type mockEsStock struct {
-	mock.Mock
+	es.Stock
+	stockAggs map[string][]es.StocksAgg
 }
 
 func (mock *mockEsStock) Index(stock finance.Stock) error {
-	args := mock.Called(stock)
-	return args.Error(0)
+	return nil
 }
 
 func (mock *mockEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
-	args := mock.Called(symbol, movAvgWindow, step, startDate, endDate)
-	stocks := args.Get(0).([]es.StocksAgg)
-	return stocks, args.Error(1)
-}
-
-func (mock *mockEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
-	args := mock.Called(symbol, startDate, endDate)
-	stocks := args.Get(0).(*es.StocksStats)
-	return stocks, args.Error(1)
+	return mock.stockAggs[symbol], nil
 }
 
 type DummySchemaDecoder struct {
@@ -94,18 +86,20 @@ func (api *OneItemFinanceAPI) GetHistory(symbol string, start time.Time, end tim
 	return []finance.Stock{{Symbol: "TEST"}}, nil
 }
 
-type ErrorEsStock struct {
+type esStockIndexError struct {
+	es.Stock
 	Msg string
 }
 
-func (es *ErrorEsStock) Index(stock finance.Stock) error {
-	return errors.New(es.Msg)
+func (mock *esStockIndexError) Index(stock finance.Stock) error {
+	return errors.New(mock.Msg)
 }
 
-func (es *ErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
-	return nil, errors.New(es.Msg)
+type esStockGetStockAggError struct {
+	es.Stock
+	Msg string
 }
 
-func (es *ErrorEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
-	return nil, nil
+func (mock *esStockGetStockAggError) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
+	return nil, errors.New(mock.Msg)
 }

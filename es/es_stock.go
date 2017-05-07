@@ -16,6 +16,7 @@ package es
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -33,6 +34,10 @@ const (
 	movCloseAggregationName = "mov_close"
 	statsAggregationName    = "stats"
 )
+
+type stockValue struct {
+	Date string `json:"date"`
+}
 
 // StocksStats contains all stats concerning a stock
 type StocksStats struct {
@@ -54,6 +59,7 @@ type IStock interface {
 	Index(stock finance.Stock) error
 	GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]StocksAgg, error)
 	GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*StocksStats, error)
+	GetDateForNumPoint(symbol string, numPoints int, endDate time.Time) (*time.Time, error)
 }
 
 // Stock manage stocks in elasticsearch
@@ -171,4 +177,37 @@ func (esStock *Stock) GetStockStats(symbol string, startDate time.Time, endDate 
 		StandardDeviation: *resAgg.StdDeviation,
 		Avg:               *resAgg.Avg,
 	}, nil
+}
+
+// GetDateForNumPoint compute the start date to get a number of data points
+//
+// 	GetDateForNumPoint("CW8.PA", endDate)
+//
+// returns the start date
+func (esStock *Stock) GetDateForNumPoint(symbol string, numPoints int, endDate time.Time) (*time.Time, error) {
+	esContext, esCancel := context.WithTimeout(context.Background(), indexTimeout)
+	defer esCancel()
+	startDate := endDate.AddDate(0, 0, int(float64(numPoints)*2)*-1)
+	query := elastic.NewQueryStringQuery(fmt.Sprintf("symbol = %s AND date: [%s TO %s]",
+		symbol, startDate.Format(finance.DateFormat), endDate.Format(finance.DateFormat)))
+	results, err := esStock.es.Search(indexName).
+		Type(indexType).
+		Query(query).
+		Sort("date", false).
+		From(numPoints - 1).
+		Size(1).
+		Do(esContext)
+	if err != nil {
+		return nil, err
+	}
+	var value stockValue
+	err = json.Unmarshal(*results.Hits.Hits[0].Source, &value)
+	if err != nil {
+		return nil, err
+	}
+	date, err := time.Parse(time.RFC3339, value.Date)
+	if err != nil {
+		return nil, err
+	}
+	return &date, nil
 }

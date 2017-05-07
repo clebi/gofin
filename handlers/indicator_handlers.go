@@ -16,7 +16,9 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
+	"github.com/clebi/gofin/es"
 	"github.com/labstack/echo"
 )
 
@@ -54,6 +56,18 @@ func NewIndicatorHandlers(context *Context) IndicatorHandlers {
 	}
 }
 
+func (handlers *IndicatorHandlers) getStockStats(symbol string, numPoints int, endDate time.Time) (*es.StocksStats, error) {
+	startDate, err := handlers.esStock.GetDateForNumPoint(symbol, numPoints, endDate)
+	if err != nil {
+		return nil, err
+	}
+	stockStats, err := handlers.esStock.GetStockStats(symbol, *startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	return stockStats, nil
+}
+
 // GetStocks retrieves the indicators for a list of stocks
 //
 // This function is a handler for http server, it should not be called directly
@@ -73,11 +87,11 @@ func (handlers *IndicatorHandlers) GetStocks(c echo.Context) error {
 		if err != nil {
 			return handlers.errorHandler(c, http.StatusInternalServerError, err)
 		}
-		stockStats200, err := handlers.esStock.GetStockStats(symbol, endDate.AddDate(0, 0, -200), endDate)
+		stockStats200, err := handlers.getStockStats(symbol, 200, endDate)
 		if err != nil {
 			return handlers.errorHandler(c, http.StatusInternalServerError, err)
 		}
-		stockStats50, err := handlers.esStock.GetStockStats(symbol, endDate.AddDate(0, 0, -50), endDate)
+		stockStats50, err := handlers.getStockStats(symbol, 50, endDate)
 		if err != nil {
 			return handlers.errorHandler(c, http.StatusInternalServerError, err)
 		}

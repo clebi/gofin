@@ -77,15 +77,16 @@ func TestHistory(t *testing.T) {
 	stocks := []finance.Stock{stock}
 	mockedHistoryAPI := mockHistoryAPI{}
 	mockedHistoryAPI.On("GetHistory", symbolTest, testStartMovDate, testEndDate).Return(stocks, nil)
-	stocksAgg := []es.StocksAgg{{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}}
-	mockedEsStock := mockEsStock{}
-	mockedEsStock.On("Index", stock).Return(nil)
-	mockedEsStock.On("GetStocksAgg", symbolTest, 2, 2, testStartDate, testEndDate).Return(stocksAgg, nil)
+	mockedEsStock := mockEsStock{
+		stockAggs: map[string][]es.StocksAgg{
+			symbolTest: {{Symbol: symbolTest, MsTime: testStartMovDate.Unix() * 1000, AvgClose: 4.4, MovClose: 4.1}},
+		},
+	}
 	resp := httptest.NewRecorder()
 	req, stockAggJSON, handlers, err := prepareHisotryCall(
 		testHistoryMethod,
 		testHistoryRequest,
-		stocksAgg,
+		mockedEsStock.stockAggs[symbolTest],
 		&mockedHistoryAPI,
 		&mockedEsStock)
 	if err != nil {
@@ -106,8 +107,8 @@ func TestHistoryList(t *testing.T) {
 		{{Open: 2.1, High: 2.2, Low: 2.3, Close: 2.4, Volume: 222, Symbol: testHistoryListSymbol2, Date: finance.YTime{Time: testStartDate}}},
 	}
 	var stocksAggs [][]es.StocksAgg
+	mapStocksAggs := map[string][]es.StocksAgg{}
 	mockedHistoryAPI := mockHistoryAPI{}
-	mockedEsStock := mockEsStock{}
 	for _, stockList := range stocks {
 		symbol := stockList[0].Symbol
 		mockedHistoryAPI.On("GetHistory", symbol, testStartMovDate, testEndDate).Return(stockList, nil)
@@ -119,11 +120,11 @@ func TestHistoryList(t *testing.T) {
 				MovClose: float64(stockList[0].Close) + float64(0.1),
 			},
 		}
-		mockedEsStock.On("Index", stockList[0]).Return(nil)
-		mockedEsStock.On("GetStocksAgg", symbol, 2, 2, testStartDate, testEndDate).Return(stocksAgg, nil)
+		mapStocksAggs[symbol] = stocksAgg
 		stocksAggs = append(stocksAggs, stocksAgg)
 	}
 
+	mockedEsStock := mockEsStock{stockAggs: mapStocksAggs}
 	req, stocksAggsJSON, handlers, err := prepareHisotryCall(
 		testHistoryListMethod,
 		testHistoryListRequest,

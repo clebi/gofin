@@ -49,10 +49,9 @@ var indicatorGetStocksErrorTests = []struct {
 	},
 	{
 		&Context{
-			sh:         &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
-			validator:  &DummyStructValidator{},
-			quotesAPI:  &ErrorQuotesAPI{Msg: indicatorGetStocksErrorMsg},
-			historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg},
+			sh:        &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
+			validator: &DummyStructValidator{},
+			quotesAPI: &ErrorQuotesAPI{Msg: indicatorGetStocksErrorMsg},
 		},
 		http.StatusInternalServerError,
 		indicatorGetStocksErrorMsg,
@@ -60,11 +59,10 @@ var indicatorGetStocksErrorTests = []struct {
 	},
 	{
 		&Context{
-			sh:         &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
-			validator:  &DummyStructValidator{},
-			quotesAPI:  &DummyQuotesAPI{},
-			historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg},
-			esStock:    &IndicatorErrorEsStock{index: 0, errs: []error{errors.New(indicatorGetStocksErrorMsg)}},
+			sh:        &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
+			validator: &DummyStructValidator{},
+			quotesAPI: &ErrorQuotesAPI{Msg: indicatorGetStocksErrorMsg},
+			esStock:   &IndicatorGetNumPointsError{Msg: indicatorGetStocksErrorMsg},
 		},
 		http.StatusInternalServerError,
 		indicatorGetStocksErrorMsg,
@@ -72,11 +70,21 @@ var indicatorGetStocksErrorTests = []struct {
 	},
 	{
 		&Context{
-			sh:         &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
-			validator:  &DummyStructValidator{},
-			quotesAPI:  &DummyQuotesAPI{},
-			historyAPI: &ErrorFinanceAPI{Msg: genericErrorMsg},
-			esStock:    &IndicatorErrorEsStock{index: 0, errs: []error{nil, errors.New(indicatorGetStocksErrorMsg)}},
+			sh:        &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
+			validator: &DummyStructValidator{},
+			quotesAPI: &DummyQuotesAPI{},
+			esStock:   &IndicatorGetNumPointsError{Msg: indicatorGetStocksErrorMsg},
+		},
+		http.StatusInternalServerError,
+		indicatorGetStocksErrorMsg,
+		testIndexStockNoError,
+	},
+	{
+		&Context{
+			sh:        &IndicatorSchemaDecoder{Symbols: []string{"ERROR"}},
+			validator: &DummyStructValidator{},
+			quotesAPI: &DummyQuotesAPI{},
+			esStock:   &IndicatorGetStockStatsError{index: 0, errs: []error{nil, errors.New(indicatorGetStocksErrorMsg)}},
 		},
 		http.StatusInternalServerError,
 		indicatorGetStocksErrorMsg,

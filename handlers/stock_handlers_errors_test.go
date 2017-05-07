@@ -57,7 +57,7 @@ var errorTests = []struct {
 		&Context{
 			sh:         &DummySchemaDecoder{},
 			historyAPI: &OneItemFinanceAPI{},
-			esStock:    &ErrorEsStock{Msg: genericErrorMsg},
+			esStock:    &esStockIndexError{Msg: genericErrorMsg},
 			validator:  &DummyStructValidator{},
 		},
 		getTestDate,
@@ -68,7 +68,7 @@ var errorTests = []struct {
 		&Context{
 			sh:         &DummySchemaDecoder{},
 			historyAPI: &DummyFinanceAPI{},
-			esStock:    &ErrorEsStock{Msg: genericErrorMsg},
+			esStock:    &esStockGetStockAggError{Msg: genericErrorMsg},
 			validator:  &DummyStructValidator{},
 		},
 		getTestDate,

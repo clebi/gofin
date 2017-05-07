@@ -44,16 +44,14 @@ func (api *IndicatorQuotesAPI) GetQuote(symbol string) (*finance.Quote, error) {
 }
 
 type IndicatorTestEsStock struct {
+	es.Stock
 	index int
 	stats []es.StocksStats
 }
 
-func (mock *IndicatorTestEsStock) Index(stock finance.Stock) error {
-	return nil
-}
-
-func (mock *IndicatorTestEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
-	return nil, nil
+func (mock *IndicatorTestEsStock) GetDateForNumPoint(symbol string, numPoints int, endDate time.Time) (*time.Time, error) {
+	date := endDate.AddDate(0, 0, numPoints*-1)
+	return &date, nil
 }
 
 func (mock *IndicatorTestEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
@@ -62,21 +60,28 @@ func (mock *IndicatorTestEsStock) GetStockStats(symbol string, startDate time.Ti
 	return stats, nil
 }
 
-type IndicatorErrorEsStock struct {
+type IndicatorGetStockStatsError struct {
+	es.Stock
 	index int
 	errs  []error
 }
 
-func (mock *IndicatorErrorEsStock) Index(stock finance.Stock) error {
-	return nil
+func (mock *IndicatorGetStockStatsError) GetDateForNumPoint(symbol string, numPoints int, endDate time.Time) (*time.Time, error) {
+	date := endDate.AddDate(0, 0, numPoints*-1)
+	return &date, nil
 }
 
-func (mock *IndicatorErrorEsStock) GetStocksAgg(symbol string, movAvgWindow int, step int, startDate time.Time, endDate time.Time) ([]es.StocksAgg, error) {
-	return nil, nil
-}
-
-func (mock *IndicatorErrorEsStock) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
+func (mock *IndicatorGetStockStatsError) GetStockStats(symbol string, startDate time.Time, endDate time.Time) (*es.StocksStats, error) {
 	err := mock.errs[mock.index]
 	mock.index++
 	return nil, err
+}
+
+type IndicatorGetNumPointsError struct {
+	es.Stock
+	Msg string
+}
+
+func (mock *IndicatorGetNumPointsError) GetDateForNumPoint(symbol string, numPoints int, endDate time.Time) (*time.Time, error) {
+	return nil, errors.New(mock.Msg)
 }
