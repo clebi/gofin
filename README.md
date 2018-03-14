@@ -5,6 +5,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/clebi/gofin)](https://goreportcard.com/report/github.com/clebi/gofin)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-### Warning : Yahoo finance api has been terminated by yahoo
+### Warning : Yahoo finance api has been terminated by Yahoo
 
 Gofin retrieves stocks history from yahoo finance API and computes indicators abouts stocks.
